@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ShoppingCart, CheckCircle } from "lucide-react";
 
 const menu = [
@@ -21,51 +18,51 @@ export default function PomsushiOrders() {
 
   const placeOrder = () => {
     if (!name || cart.length === 0) return;
-    console.log("Pedido enviado:", { name, cart });
+    console.log("Pedido enviado:", name, cart);
     setOrderSent(true);
   };
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-4">Pomsushi - Pedidos Online</h1>
-      <Input
-        placeholder="Tu nombre"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="mb-4"
-      />
-      <div className="space-y-4">
-        {menu.map((item) => (
-          <Card key={item.id} className="p-4 flex justify-between items-center">
-            <span>{item.name} - ${item.price}</span>
-            <Button onClick={() => addToCart(item)}>Agregar</Button>
-          </Card>
-        ))}
-      </div>
-      <div className="mt-6 p-4 border rounded-lg">
-        <h2 className="text-xl font-bold mb-2 flex items-center">
-          <ShoppingCart className="mr-2" /> Carrito
-        </h2>
-        {cart.length > 0 ? (
-          cart.map((item, index) => (
-            <p key={index}>{item.name} - ${item.price}</p>
-          ))
+    <div style={{ maxWidth: "400px", margin: "auto", padding: "20px", fontFamily: "Arial" }}>
+      <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "10px" }}>Menú de Pomsushi</h1>
+      {menu.map((item) => (
+        <div key={item.id} style={{ padding: "10px", border: "1px solid #ccc", marginBottom: "10px" }}>
+          <span>{item.name} - ${item.price}</span>
+          <button onClick={() => addToCart(item)} style={{ marginLeft: "10px", padding: "5px", backgroundColor: "#007bff", color: "white", border: "none", cursor: "pointer" }}>
+            Agregar
+          </button>
+        </div>
+      ))}
+      <div style={{ marginTop: "20px" }}>
+        <h2 style={{ fontSize: "20px", fontWeight: "bold" }}>Carrito</h2>
+        {cart.length === 0 ? (
+          <p style={{ color: "gray" }}>El carrito está vacío.</p>
         ) : (
-          <p>El carrito está vacío</p>
+          <ul>
+            {cart.map((item, index) => (
+              <li key={index}>{item.name} - ${item.price}</li>
+            ))}
+          </ul>
         )}
       </div>
-      <Button
-        className="mt-4 w-full"
-        onClick={placeOrder}
-        disabled={!name || cart.length === 0}
-      >
-        Enviar Pedido
-      </Button>
-      {orderSent && (
-        <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-lg flex items-center">
-          <CheckCircle className="mr-2" /> Pedido enviado con éxito
-        </div>
-      )}
+      <div style={{ marginTop: "20px" }}>
+        <input
+          type="text"
+          placeholder="Tu nombre"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={{ padding: "10px", border: "1px solid #ccc", width: "100%", marginBottom: "10px" }}
+        />
+        <button onClick={placeOrder} style={{ width: "100%", padding: "10px", backgroundColor: "#28a745", color: "white", border: "none", cursor: "pointer" }}>
+          Enviar Pedido <ShoppingCart style={{ marginLeft: "5px" }} />
+        </button>
+        {orderSent && (
+          <div style={{ marginTop: "10px", color: "green", display: "flex", alignItems: "center" }}>
+            <CheckCircle style={{ marginRight: "5px" }} /> Pedido enviado con éxito, {name}!
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
