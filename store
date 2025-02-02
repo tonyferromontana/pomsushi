@@ -1,0 +1,71 @@
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ShoppingCart, CheckCircle } from "lucide-react";
+
+const menu = [
+  { id: 1, name: "Handroll Salmón", price: 5000 },
+  { id: 2, name: "Handroll Pollo", price: 5500 },
+  { id: 3, name: "Handroll Camarón", price: 6000 },
+];
+
+export default function PomsushiOrders() {
+  const [cart, setCart] = useState([]);
+  const [name, setName] = useState("");
+  const [orderSent, setOrderSent] = useState(false);
+
+  const addToCart = (item) => {
+    setCart([...cart, item]);
+  };
+
+  const placeOrder = () => {
+    if (!name || cart.length === 0) return;
+    console.log("Pedido enviado:", { name, cart });
+    setOrderSent(true);
+  };
+
+  return (
+    <div className="p-6 max-w-lg mx-auto">
+      <h1 className="text-2xl font-bold text-center mb-4">Pomsushi - Pedidos Online</h1>
+      <Input
+        placeholder="Tu nombre"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="mb-4"
+      />
+      <div className="space-y-4">
+        {menu.map((item) => (
+          <Card key={item.id} className="p-4 flex justify-between items-center">
+            <span>{item.name} - ${item.price}</span>
+            <Button onClick={() => addToCart(item)}>Agregar</Button>
+          </Card>
+        ))}
+      </div>
+      <div className="mt-6 p-4 border rounded-lg">
+        <h2 className="text-xl font-bold mb-2 flex items-center">
+          <ShoppingCart className="mr-2" /> Carrito
+        </h2>
+        {cart.length > 0 ? (
+          cart.map((item, index) => (
+            <p key={index}>{item.name} - ${item.price}</p>
+          ))
+        ) : (
+          <p>El carrito está vacío</p>
+        )}
+      </div>
+      <Button
+        className="mt-4 w-full"
+        onClick={placeOrder}
+        disabled={!name || cart.length === 0}
+      >
+        Enviar Pedido
+      </Button>
+      {orderSent && (
+        <div className="mt-4 p-4 bg-green-100 text-green-700 rounded-lg flex items-center">
+          <CheckCircle className="mr-2" /> Pedido enviado con éxito
+        </div>
+      )}
+    </div>
+  );
+}
