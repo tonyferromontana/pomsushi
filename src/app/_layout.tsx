@@ -12,6 +12,7 @@ import { View } from 'react-native';
 
 import { SetupNeeded } from '@/components/SetupNeeded';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { listenToNotificationTaps, registerForPush } from '@/lib/push';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { colors, fonts } from '@/theme';
 
@@ -32,7 +33,13 @@ const navTheme = {
 };
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, userId } = useAuth();
+
+  // Notificaciones push: se registran al iniciar sesión.
+  useEffect(() => {
+    if (userId) void registerForPush(userId);
+  }, [userId]);
+  useEffect(() => listenToNotificationTaps(), []);
 
   if (loading) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 
@@ -53,10 +60,14 @@ function RootNavigator() {
         <Stack.Screen name="booking/[id]" options={{ title: 'Reserva' }} />
         <Stack.Screen name="chat/[id]" options={{ title: 'Mensajes' }} />
         <Stack.Screen name="publish" options={{ title: 'Publicar', presentation: 'modal' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Avisos' }} />
+        <Stack.Screen name="verify" options={{ title: 'Verificación' }} />
+        <Stack.Screen name="payout" options={{ title: 'Datos bancarios' }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
+      <Stack.Screen name="legal/[doc]" options={{ title: '' }} />
     </Stack>
   );
 }

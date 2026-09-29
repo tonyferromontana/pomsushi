@@ -1,0 +1,21 @@
+# Configuración de Supabase CLI para RUÉ (solo lo necesario para las Edge Functions).
+# El resto de la configuración del proyecto se maneja en el panel de Supabase.
+project_id = "rue"
+
+[functions.mp-create-preference]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+# Mercado Pago no envía JWT de Supabase: la seguridad es la firma x-signature.
+[functions.mp-webhook]
+verify_jwt = false
+
+# Página de retorno después de pagar: pública, solo redirige a la app.
+[functions.mp-return]
+verify_jwt = false
+
+# La llama la base de datos con un secreto interno (x-rue-secret).
+[functions.push-dispatch]
+verify_jwt = false

@@ -1,7 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { MenuRow, Stars } from '@/components/forms';
 import {
   Avatar,
   Button,
@@ -17,19 +20,31 @@ import {
 import { useAuth } from '@/lib/auth';
 import { friendlyError, logError } from '@/lib/errors';
 import { memberSince } from '@/lib/format';
+import { SUPPORT_EMAIL } from '@/legal/generated';
 import { supabase } from '@/lib/supabase';
 import type { Profile, ProfilePrivate } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { colors, space } from '@/theme';
 
+type Reputation = { rating_avg: number | null; rating_count: number; completed_bookings: number };
+
 async function loadProfile(userId: string) {
-  const [pub, priv] = await Promise.all([
+  const [pub, priv, rep, payout] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).single(),
     supabase.from('profile_private').select('*').eq('user_id', userId).single(),
+    supabase.rpc('user_reputation', { p_user_id: userId }),
+    supabase.from('payout_accounts').select('user_id').eq('user_id', userId).maybeSingle(),
   ]);
   if (pub.error) throw pub.error;
   if (priv.error) throw priv.error;
-  return { profile: pub.data as Profile, priv: priv.data as ProfilePrivate };
+  if (rep.error) logError('profile.reputation', rep.error);
+  if (payout.error) logError('profile.payout', payout.error);
+  return {
+    profile: pub.data as Profile,
+    priv: priv.data as ProfilePrivate,
+    reputation: (rep.data as Reputation | null) ?? null,
+    hasPayout: !!payout.data,
+  };
 }
 
 /** Normaliza el RUT a 12345678-5 (sin puntos, con guion, K mayúscula) */
@@ -84,6 +99,8 @@ function ProfileForm({
   const [phone, setPhone] = useState(data.priv.phone ?? '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const rep = data.reputation;
 
   const save = async () => {
     if (!userId) return;
@@ -117,11 +134,46 @@ function ProfileForm({
         text: 'Salir',
         style: 'destructive',
         onPress: async () => {
+          // Este dispositivo deja de recibir avisos de esta cuenta
+          const del = await supabase.from('push_tokens').delete().eq('user_id', userId as string);
+          if (del.error) logError('push.unregister', del.error);
           const { error: err } = await supabase.auth.signOut();
           if (err) logError('auth.signOut', err);
         },
       },
     ]);
+
+  const deleteAccount = () =>
+    Alert.alert(
+      'Eliminar cuenta',
+      'Se borrarán tu perfil, tus datos privados, documentos y vehículos sin reservas. Esta acción no se puede deshacer.',
+      [
+        { text: 'Volver', style: 'cancel' },
+        {
+          text: 'Eliminar mi cuenta',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            setMessage(null);
+            try {
+              const { data: res, error: err } = await supabase.functions.invoke('delete-account', { body: {} });
+              if (err) {
+                const ctx = (err as { context?: Response }).context;
+                const body = ctx ? ((await ctx.json().catch(() => null)) as { error?: string } | null) : null;
+                throw new Error(body?.error ?? 'No pudimos eliminar tu cuenta. Escríbenos a soporte.');
+              }
+              if (!(res as { ok?: boolean })?.ok) throw new Error('No pudimos eliminar tu cuenta. Escríbenos a soporte.');
+              await supabase.auth.signOut();
+            } catch (e) {
+              logError('account.delete', e);
+              setMessage({ tone: 'error', text: e instanceof Error ? e.message : friendlyError(e) });
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
 
   return (
     <Screen scroll>
@@ -137,11 +189,24 @@ function ProfileForm({
 
       <SectionHeader title="Confianza" />
       <Card style={{ gap: space.sm }}>
+        {rep && rep.rating_count > 0 && rep.rating_avg !== null ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <Stars value={rep.rating_avg} size={16} />
+            <Text variant="bodySmall">
+              {rep.rating_avg} · {rep.rating_count} {rep.rating_count === 1 ? 'reseña' : 'reseñas'}
+            </Text>
+          </View>
+        ) : (
+          <Text variant="bodySmall" color="textSecondary">Aún no tienes reseñas.</Text>
+        )}
+        <Text variant="bodySmall" color="textSecondary">
+          {rep?.completed_bookings ?? 0} arriendos completados
+        </Text>
         <Verification ok={data.profile.identity_verified} label="Identidad verificada" />
         <Verification ok={data.profile.license_verified} label="Licencia de conducir verificada" />
-        <Text variant="caption" color="textSecondary">
-          La verificación de documentos llega en una próxima versión.
-        </Text>
+        {!data.profile.identity_verified || !data.profile.license_verified ? (
+          <Button label="Verificar mis documentos" variant="secondary" icon="shield-checkmark-outline" small onPress={() => router.push('/verify')} />
+        ) : null}
       </Card>
 
       <SectionHeader title="Perfil público" />
@@ -174,7 +239,30 @@ function ProfileForm({
       <View style={{ gap: space.md, marginTop: space.xl }}>
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
         <Button label="Guardar cambios" onPress={save} loading={saving} />
-        <Button label="Cerrar sesión" variant="danger" icon="log-out-outline" onPress={signOut} />
+      </View>
+
+      <SectionHeader title="Propietario" />
+      <MenuRow
+        icon="card-outline"
+        label="Datos bancarios"
+        detail={data.hasPayout ? 'Listos' : 'Pendientes'}
+        onPress={() => router.push('/payout')}
+      />
+
+      <SectionHeader title="Ayuda y legal" />
+      <MenuRow icon="notifications-outline" label="Avisos" onPress={() => router.push('/notifications')} />
+      <MenuRow
+        icon="help-circle-outline"
+        label="Soporte"
+        detail={SUPPORT_EMAIL}
+        onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Ayuda%20RU%C3%89`).catch((e) => logError('support.mail', e))}
+      />
+      <MenuRow icon="document-text-outline" label="Términos y Condiciones" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terminos' } })} />
+      <MenuRow icon="lock-closed-outline" label="Política de Privacidad" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacidad' } })} />
+
+      <View style={{ gap: space.md, marginTop: space.xl }}>
+        <Button label="Cerrar sesión" variant="secondary" icon="log-out-outline" onPress={signOut} />
+        <Button label="Eliminar cuenta" variant="danger" icon="trash-outline" onPress={deleteAccount} loading={deleting} />
       </View>
     </Screen>
   );

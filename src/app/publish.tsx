@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Checkbox } from '@/components/forms';
 import { Button, Chip, ErrorState, Input, LoadingState, Notice, Screen, Text } from '@/components/ui';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
@@ -116,6 +117,7 @@ export default function PublishScreen() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [saving, setSaving] = useState<ListingStatus | null>(null);
+  const [declared, setDeclared] = useState(!!editId);
 
   useEffect(() => {
     if (!editId) {
@@ -193,6 +195,10 @@ export default function PublishScreen() {
 
   const save = async (status: ListingStatus) => {
     if (!userId || !form.vehicle_type) return;
+    if (status === 'publicado' && !declared) {
+      setStepError('Confirma que el vehículo tiene sus papeles al día para poder publicarlo.');
+      return;
+    }
     for (let s = 0; s < STEPS.length - 1; s++) {
       const err = validate(s, form, photos);
       if (err) {
@@ -556,8 +562,12 @@ export default function PublishScreen() {
               </Text>
             </View>
           </View>
+          <Checkbox checked={declared} onChange={setDeclared}>
+            Declaro que soy el dueño o estoy autorizado para arrendar este vehículo, y que tiene al día su permiso de
+            circulación, revisión técnica y SOAP.
+          </Checkbox>
           <Notice>
-            Pronto te pediremos los documentos del vehículo para marcarlo como verificado. Los documentos nunca se
+            Pronto podrás subir los documentos del vehículo para marcarlo como verificado. Los documentos nunca se
             muestran a otros usuarios.
           </Notice>
         </View>

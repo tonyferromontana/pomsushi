@@ -7,7 +7,8 @@
 
 - El repo `tonyferromontana/pomsushi` no tenía código de Rueda. RUÉ se construyó **desde cero** en esta sesión (el dueño lo pidió explícitamente).
 - El archivo `store` (componente web de pedidos de sushi, ajeno a RUÉ) se conserva sin tocar. No borrarlo sin autorización.
-- **Etapa actual: 1 — RUÉ corriendo en el celular.** Código listo y validado; falta que el dueño cree el proyecto Supabase, corra las migraciones y llene `.env`.
+- **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Mercado Pago, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
+- Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
 - Como no existía "Rueda", se usa la marca y la paleta **RUÉ desde el inicio** (no hay rebranding pendiente de nombres internos). Bundle ID provisorio: `cl.rue.app`.
 
 ## 1. Qué es RUÉ
@@ -22,7 +23,7 @@
 
 Expo SDK 57 (expo 57.0.26, React Native 0.86, React 19.2) · Expo Router 57 (rutas en `src/app/`) · TypeScript strict · Supabase (Postgres + RLS, Auth email/contraseña, Storage, Realtime) · Mercado Pago Checkout Pro (Etapa 4, aún no implementado).
 
-Dependencias agregadas (todas funcionan en Expo Go): `@supabase/supabase-js`, `@react-native-async-storage/async-storage` (sesión), `@expo-google-fonts/bricolage-grotesque`, `@expo-google-fonts/dm-sans`, `@react-native-community/datetimepicker`, `expo-image-picker`, `expo-image-manipulator` (compresión de fotos), `@expo/vector-icons`. Sin mapas ni analytics todavía (decisión pendiente con el dueño).
+Dependencias agregadas (todas funcionan en Expo Go): `@supabase/supabase-js`, `@react-native-async-storage/async-storage` (sesión), `@expo-google-fonts/bricolage-grotesque`, `@expo-google-fonts/dm-sans`, `@react-native-community/datetimepicker`, `expo-image-picker`, `expo-image-manipulator` (compresión de fotos), `@expo/vector-icons`, `expo-notifications` + `expo-device` (push; en Android el push remoto requiere build de EAS, no Expo Go). Sin mapas ni analytics todavía (decisión pendiente con el dueño).
 
 ## 3. Estructura
 
@@ -39,7 +40,11 @@ src/
     vehicle/[id].tsx         # Ficha: fotos, atributos, cotización del servidor, solicitar
     booking/[id].tsx         # Detalle, acciones por rol, historial, realtime
     chat/[id].tsx            # Chat por reserva (realtime)
-    publish.tsx              # Asistente de publicación en 5 pasos (crear / editar)
+    publish.tsx              # Asistente de publicación en 5 pasos (crear / editar) + declaración de papeles al día
+    notifications.tsx        # Bandeja de avisos
+    verify.tsx               # Subir licencia / cédula (bucket privado documents)
+    payout.tsx               # Datos bancarios del propietario
+    legal/[doc].tsx          # Términos / Privacidad (accesible sin sesión)
   components/
     ui.tsx                   # Primitivas: Text, Wordmark, Screen, Button, IconButton, Input, FieldButton,
                              # Chip, Segmented, Card, Divider, SectionHeader, Row, Badge, Price, Avatar,
@@ -47,6 +52,8 @@ src/
     VehicleCard.tsx          # Tarjeta de vehículo + VehiclePhoto (placeholder por tipo)
     DateRangeField.tsx       # Selector de fechas (Android: diálogo nativo; iOS: hoja con calendario)
     SetupNeeded.tsx          # Pantalla si falta .env
+    forms.tsx                # Checkbox, Stars (reseñas), MenuRow
+    ReportSheet.tsx          # Reportar usuario / publicación / reserva (+ bloquear)
   lib/
     supabase.ts              # Cliente (solo EXPO_PUBLIC_*), photoUrl()
     auth.tsx                 # AuthProvider / useAuth
@@ -56,13 +63,28 @@ src/
     errors.ts                # friendlyError() / logError()
     useAsync.ts              # Carga con loading / error / reintento
     analytics.ts             # track() — eventos definidos, sin proveedor
+    push.ts                  # Registro de token push y apertura de reservas al tocar un aviso
+  legal/generated.ts         # GENERADO por scripts/build-legal.mjs (no editar)
   theme.ts                   # Tokens de diseño (única fuente)
+legal/                       # FUENTE de Términos y Privacidad (.md) + datos de contacto (sitio.json)
+docs/                        # Sitio web (GitHub Pages): inicio, términos, privacidad, soporte, eliminar cuenta (GENERADO)
+scripts/build-legal.mjs      # npm run legal → regenera src/legal/generated.ts y docs/
 supabase/
   migrations/0001_core_schema.sql
   migrations/0002_booking_engine.sql
-  tests/run.sh               # Levanta Postgres temporal, aplica migraciones y corre pruebas
+  migrations/0003_trust_safety_legal.sql   # legal, verificación, reseñas, reportes, bloqueos, avisos, pagos a dueños, borrar cuenta
+  migrations/0004_payments_cron_push.sql   # pagos no aprobados, pg_cron (vencimientos), pg_net → push
+  functions/                 # Edge Functions (Deno): mp-create-preference, mp-webhook, mp-return, push-dispatch, delete-account
+  functions/_shared/         # http, supabase (admin/usuario), mercadopago (firma, API), redirect (+ pruebas)
+  config.toml                # verify_jwt por función
+  tests/run.sh               # Levanta Postgres temporal, aplica migraciones y corre todos los *.test.sql
   tests/supabase_stub.sql    # Imitación mínima de auth/storage/roles de Supabase (solo pruebas)
   tests/booking_flow.test.sql
+  tests/trust_safety.test.sql
+eas.json                     # Perfiles de build: preview (APK interno) y production (tiendas)
+.github/workflows/ci.yml     # CI: legal al día, tsc, lint, pruebas de BD y de Edge Functions
+LANZAMIENTO.md               # Lista de tareas del dueño para lanzar
+OPERACION.md                 # Manual del administrador (SQL listos para usar)
 assets/images/               # icon, splash, android foreground, favicon (PROVISORIOS)
 ```
 
@@ -91,6 +113,10 @@ assets/images/               # icon, splash, android foreground, favicon (PROVIS
 | `payments` | pagos (sin datos de tarjeta), único por `provider_payment_id` | lectura: participantes; escribe solo servidor |
 | `payment_events` | webhooks crudos, idempotencia | solo servidor |
 | `platform_settings` | comisiones y plazos configurables | solo servidor |
+
+Tablas de 0003/0004: `admins` (solo servidor), `legal_acceptances` (versión aceptada), `verification_requests` (licencia/cédula; aprueba un admin con `review_verification`), `reviews` (una por persona y reserva finalizada, vía `submit_review`), `reports` y `user_blocks` (exigidos por App Store), `notifications` (creadas por triggers; el usuario solo marca `read_at`), `push_tokens`, `payout_accounts` (banco, privado), `payouts` (se crea al finalizar una reserva pagada; admin marca pagado).
+RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, `user_reputation`, `my_bookings`, `booking_vehicle`, `is_admin`, `is_blocked_with`. Solo servidor: `delete_account_data`, `record_payment_status`, `review_verification` (admin o service_role).
+`request_booking` y `search_vehicles` fueron reemplazadas en 0003 (bloqueos + licencia obligatoria configurable `require_verified_license`).
 
 - `vehicle_type`: car, motorcycle, suv, pickup, van, cargo_van, truck, minibus, trailer, special. Atributos por tipo en `attributes` (jsonb) validados por `validate_vehicle_attributes()` (claves permitidas y rangos). El formulario por tipo está en `ATTRIBUTE_FIELDS` (`src/lib/catalog.ts`). Para un atributo nuevo: agregar la clave en una **migración nueva** (reemplazando la función) y en `catalog.ts`.
 - Storage: `vehicle-photos` (lectura pública; cada usuario escribe solo en `<uid>/…`), `documents` (privado; solo `<uid>/…`).
@@ -124,6 +150,13 @@ solicitada → aceptada → confirmada → en_curso → devuelta → finalizada
 - `booking_transition_allowed()` + trigger `enforce_booking_transition` rechazan **cualquier** salto inválido, incluso del servidor, y bloquean cambios de montos/fechas/partes.
 - RPC para la app: `search_vehicles`, `quote_booking`, `request_booking`, `transition_booking`. Solo servidor: `confirm_booking_payment` (idempotente; devuelve `confirmed` | `already_confirmed` | `amount_mismatch` | `not_payable`), `expire_stale_bookings`.
 - Plazos: `request_expiry_hours` (24), `payment_expiry_hours` (24), `max_booking_days` (90).
+- `expire_stale_bookings()` corre cada 10 minutos con pg_cron (0004).
+- Avisos: triggers `notify_booking_change` / `notify_new_message` (máx. 1 aviso de mensajes cada 10 min por reserva) → `notifications` → trigger `dispatch_push` (pg_net) → Edge Function `push-dispatch` (Expo Push). Requiere `platform_settings.supabase_url`.
+
+**Pagos (Mercado Pago Checkout Pro)**
+1. App → `mp-create-preference` (JWT): valida que sea el arrendatario, reserva `aceptada` y no vencida; monto = `bookings.total_clp`; reutiliza la preferencia guardada en `payments.checkout_url`.
+2. App abre el link con `WebBrowser.openAuthSessionAsync`; al volver, `mp-return` redirige a `rue://pago` (o `exp://` en Expo Go). **Volver no confirma nada.**
+3. `mp-webhook` (sin JWT): verifica `x-signature` (HMAC con `MP_WEBHOOK_SECRET`), guarda `payment_events` (idempotencia), consulta `GET /v1/payments/{id}`, valida ambiente/moneda, y llama `confirm_booking_payment` (aprobado) o `record_payment_status` (resto). Responde 500 ante errores para que MP reintente.
 
 ## 7. Reglas inviolables
 
@@ -145,6 +178,8 @@ npm install
 npx tsc --noEmit                     # obligatorio
 npx expo lint                        # obligatorio
 npm run test:db                      # migraciones + pruebas de seguridad y reservas (Postgres local)
+npm run test:functions               # pruebas + tipos de Edge Functions (Deno; npx -y deno si no está instalado)
+npm run legal                        # regenera textos legales (app + docs/) desde legal/*.md
 npx expo start                       # abrir con Expo Go (QR)
 npx expo start --tunnel              # si el celular no está en la misma red
 npx expo start --clear               # después de cambiar .env
@@ -159,7 +194,22 @@ App (`.env`, ver `.env.example`, nunca se sube a git):
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` (anon `eyJ…` o publishable `sb_publishable_…`)
 
-Servidor (Etapa 4, secrets de Edge Functions): `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_ENVIRONMENT` (`test`/`prod`). `SUPABASE_SERVICE_ROLE_KEY` la inyecta Supabase en las funciones.
+Servidor (secrets de Edge Functions, `supabase secrets set`): `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_ENVIRONMENT` (`test`/`prod`). `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase.
+
+Base de datos (`platform_settings`, ver OPERACION.md): `supabase_url` (activa push), `internal_webhook_secret` (se genera solo), comisiones, plazos, `terms_version`, `require_verified_license`.
+
+App: `extra.eas.projectId` en app.json lo crea `eas init` (sin él no hay token push; la bandeja igual funciona).
+
+Acceso para que Claude despliegue (opcional, ver LANZAMIENTO.md Fase 3): variables `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `EXPO_TOKEN`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` y red a supabase.com, *.supabase.co, expo.dev, api.expo.dev, exp.host, api.mercadopago.com.
+
+Despliegue (Supabase CLI):
+```bash
+npx supabase link --project-ref $SUPABASE_PROJECT_REF
+npx supabase db push                          # aplica migraciones pendientes
+npx supabase functions deploy mp-create-preference mp-webhook mp-return push-dispatch delete-account
+npx supabase secrets set MP_ACCESS_TOKEN=... MP_WEBHOOK_SECRET=... MP_ENVIRONMENT=test
+```
+Builds (EAS): `npx eas-cli init` (crea projectId), `npx eas-cli build --profile preview|production --platform all`, `npx eas-cli submit --platform ios|android`.
 
 Configuración de Supabase para pruebas: Authentication → Sign In / Providers → Email → desactivar "Confirm email" facilita probar con cuentas falsas (reactivar antes de producción).
 
@@ -167,47 +217,53 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 
 | Módulo | Estado |
 |---|---|
-| Base de datos (0001, 0002) + RLS + Storage | ✅ hecho, probado localmente (`npm run test:db`); ⏳ falta aplicarlo en Supabase real |
-| Auth email/contraseña | ✅ |
-| Explorar (filtros, paginación de 20) | ✅ |
-| Ficha + cotización servidor + solicitud | ✅ |
-| Publicar / editar / pausar (5 pasos, fotos comprimidas) | ✅ |
-| Reservas + acciones por rol + historial + realtime | ✅ |
-| Chat realtime | ✅ (sin "leído") |
-| Perfil + RUT/teléfono privados | ✅ |
-| Pago Mercado Pago | ⏳ Etapa 4 (botón "Pagar" visible y deshabilitado) |
-| Edge Functions (`supabase/functions/`) | ⏳ Etapa 4 (no existen aún) |
-| Cron vencimientos / garantías / notificaciones push | ⏳ Etapa 6 |
-| Verificación de identidad, licencia y vehículo | ⏳ backlog (columnas listas, flujo no) |
-| Reseñas y reputación | ⏳ backlog (no hay tabla; no se muestran datos falsos) |
-| Bloqueo de fechas por el propietario (UI) | ⏳ backlog (tabla `vehicle_blocks` lista) |
-| Mapa | ⏳ decisión pendiente del dueño |
-| Logo definitivo | ⏳ esperando archivos del dueño |
-| EAS / TestFlight | ⏳ Etapa 8 |
+| Base de datos 0001–0004 + RLS + Storage + cron + push | ✅ probado localmente (`npm run test:db`, 2 archivos de pruebas); ⏳ aplicar en Supabase real |
+| Auth email/contraseña + aceptación de términos + mayoría de edad | ✅ |
+| Explorar, ficha, cotización, solicitud | ✅ |
+| Publicar / editar / pausar + declaración de papeles | ✅ |
+| Reservas por rol + historial + realtime | ✅ |
+| Pago Mercado Pago (preferencia, retorno, webhook firmado, idempotencia) | ✅ código + pruebas de firma; ⏳ probar con credenciales de prueba reales |
+| Avisos en la app + push | ✅ bandeja; ⏳ push requiere `supabase_url`, `eas init` y build EAS |
+| Verificación de licencia/cédula (revisión manual de admin) | ✅ |
+| Reseñas y reputación real | ✅ |
+| Reportar y bloquear | ✅ |
+| Eliminar cuenta (app + web) | ✅ |
+| Datos bancarios y pagos a propietarios (manual, ver OPERACION.md) | ✅ |
+| Términos y Privacidad (borradores) + sitio web docs/ | ✅ borrador; ⏳ revisión de abogado y datos de empresa |
+| EAS (eas.json, app.json) | ✅ config; ⏳ cuentas Expo/Apple/Google del dueño |
+| CI GitHub Actions | ✅ |
+| Chat | ✅ (sin "leído") |
+| Bloqueo de fechas por el propietario (UI) | ⏳ backlog (tabla lista) |
+| Documentos del vehículo (verificación) | ⏳ backlog (hoy: declaración jurada) |
+| Mapa, analytics | ⏳ decisión del dueño |
+| Logo definitivo | ⏳ archivos del dueño |
 
-## 11. Deuda técnica conocida
+## 11. Deuda técnica y riesgos conocidos
 
 | Nivel | Hallazgo |
 |---|---|
-| Importante | Comisión y cargo de servicio están en 0 %: el dueño debe definirlos antes de cobrar. |
-| Importante | Política de cancelación con reembolso no definida: `confirmada → cancelada` no se ofrece en la app. |
-| Importante | Garantía: se muestra y se guarda, pero no se cobra ni retiene (definir en Etapa 4/6). |
-| Importante | Si un vehículo se pausa, el arrendatario deja de ver su título en reservas antiguas (RLS de `vehicles`); se muestra "Vehículo". Resolver con una vista/RPC de reservas. |
-| Mejora | Al guardar fotos se borran y reinsertan las filas de `vehicle_photos`; si falla a mitad, hay que volver a guardar. Pasar a una RPC transaccional. |
-| Mejora | `messages.read_at` existe pero no se actualiza (sin "leído"). |
-| Mejora | Íconos y splash provisorios. |
-| Mejora | Tipos de base de datos escritos a mano (`src/lib/types.ts`); generar con `supabase gen types` cuando esté la CLI (Etapa 4). |
+| Crítico (negocio) | Seguros: no hay cobertura definida para daños durante el arriendo. No lanzar al público sin resolverlo. |
+| Importante | Comisión y cargo de servicio en 0 %: definir antes de cobrar. |
+| Importante | Política de cancelación con reembolso no definida: `confirmada → cancelada` no se ofrece en la app; reembolsos manuales en MP (OPERACION.md). |
+| Importante | Garantía: se muestra como "se coordina con el propietario"; no se cobra por la app. |
+| Importante | Pagos a propietarios manuales (transferencia + marcar en SQL). Evaluar Mercado Pago Marketplace (split) cuando haya volumen. |
+| Importante | Webhook de MP no probado contra la API real desde este entorno (proxy bloquea MP). Probar en Fase 4. |
+| Mejora | Al guardar fotos se borran y reinsertan las filas de `vehicle_photos`; pasar a RPC transaccional. |
+| Mejora | Al eliminar cuenta, las fotos de vehículos borrados quedan en Storage (no son datos personales). Limpiar con tarea periódica. |
+| Mejora | `messages.read_at` no se actualiza (sin "leído"). |
+| Mejora | Tipos de BD a mano (`src/lib/types.ts`); generar con `supabase gen types`. |
+| Mejora | Repo público: el código es visible (no hay secretos). GitHub Pages gratis requiere repo público. |
 
 ## 12. Etapas (detenerse al final de cada una y esperar visto bueno)
 
 0. Auditoría + CLAUDE.md — ✅
-1. RUÉ corriendo en el celular con Expo Go — **en curso** (falta Supabase + `.env` del dueño)
-2. Rebranding — mayormente innecesario (se partió como RUÉ); queda logo/íconos definitivos
-3. Arquitectura multimodal — base hecha en 0001 (`vehicle_type` + `attributes`); revisar con uso real
-4. Mercado Pago test (CLI Supabase, Edge Functions, secrets, webhook, idempotencia)
-5. Reserva completa con dos cuentas
-6. Garantías, cron y notificaciones
-7. Calidad (accesibilidad, performance, seguridad, casos borde)
-8. EAS / TestFlight
+1. RUÉ corriendo en el celular con Expo Go — ✅ código; ⏳ Supabase + `.env` del dueño
+2. Rebranding — ✅ (se partió como RUÉ); ⏳ logo/íconos definitivos
+3. Arquitectura multimodal — ✅ `vehicle_type` + `attributes`
+4. Mercado Pago — ✅ código y pruebas; ⏳ desplegar + credenciales de prueba
+5. Reserva completa con dos cuentas — ⏳ prueba manual del dueño (Fase 4 de LANZAMIENTO.md)
+6. Cron y notificaciones — ✅; garantías ⏳ decisión de negocio
+7. Calidad — ✅ tsc, lint, CI, pruebas de BD y funciones
+8. EAS / TestFlight — ✅ configuración; ⏳ cuentas del dueño
 
 Preguntar al dueño solo por negocio, dinero, marca, legal, servicios pagados, credenciales, producción o borrados. Lo técnico y reversible lo decide Claude.

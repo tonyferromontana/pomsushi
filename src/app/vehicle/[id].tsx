@@ -20,6 +20,7 @@ import {
   SectionHeader,
   Text,
 } from '@/components/ui';
+import { ReportSheet } from '@/components/ReportSheet';
 import { VehiclePhoto } from '@/components/VehicleCard';
 import { track } from '@/lib/analytics';
 import { attributeSummary, PURPOSES, purposeLabel, vehicleTypeLabel } from '@/lib/catalog';
@@ -31,18 +32,26 @@ import type { BookingPurpose, Profile, Quote, Vehicle, VehiclePhoto as Photo } f
 import { useAsync } from '@/lib/useAsync';
 import { colors, photoAspect, radius, space } from '@/theme';
 
-type Detail = { vehicle: Vehicle; photos: Photo[]; owner: Profile | null };
+type Reputation = { rating_avg: number | null; rating_count: number; completed_bookings: number };
+type Detail = { vehicle: Vehicle; photos: Photo[]; owner: Profile | null; reputation: Reputation | null };
 
 async function loadDetail(id: string): Promise<Detail> {
   const { data: vehicle, error } = await supabase.from('vehicles').select('*').eq('id', id).single();
   if (error) throw error;
-  const [photos, owner] = await Promise.all([
+  const [photos, owner, rep] = await Promise.all([
     supabase.from('vehicle_photos').select('*').eq('vehicle_id', id).order('position'),
     supabase.from('profiles').select('*').eq('id', vehicle.owner_id).maybeSingle(),
+    supabase.rpc('user_reputation', { p_user_id: vehicle.owner_id }),
   ]);
   if (photos.error) throw photos.error;
   if (owner.error) logError('vehicle.owner', owner.error);
-  return { vehicle: vehicle as Vehicle, photos: (photos.data ?? []) as Photo[], owner: (owner.data as Profile) ?? null };
+  if (rep.error) logError('vehicle.reputation', rep.error);
+  return {
+    vehicle: vehicle as Vehicle,
+    photos: (photos.data ?? []) as Photo[],
+    owner: (owner.data as Profile) ?? null,
+    reputation: (rep.data as Reputation | null) ?? null,
+  };
 }
 
 export default function VehicleScreen() {
@@ -58,6 +67,7 @@ export default function VehicleScreen() {
   const [quoteResult, setQuoteResult] = useState<{ key: string; quote: Quote | null; error: string | null } | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
@@ -223,7 +233,7 @@ export default function VehicleScreen() {
         <View style={{ gap: space.xs }}>
           <Row label="Precio por día" value={clp(v.daily_price_clp)} />
           {v.weekly_price_clp ? <Row label="Precio por semana" value={clp(v.weekly_price_clp)} /> : null}
-          {v.deposit_clp > 0 ? <Row label="Garantía" value={clp(v.deposit_clp)} /> : null}
+          {v.deposit_clp > 0 ? <Row label="Garantía (se coordina al retirar)" value={clp(v.deposit_clp)} /> : null}
         </View>
 
         {v.description ? (
@@ -248,6 +258,12 @@ export default function VehicleScreen() {
               <View style={{ flex: 1 }}>
                 <Text variant="title">{owner.display_name || 'Propietario RUÉ'}</Text>
                 <Text variant="caption" color="textSecondary">
+                  {data.reputation && data.reputation.rating_count > 0 && data.reputation.rating_avg !== null
+                    ? `★ ${data.reputation.rating_avg} (${data.reputation.rating_count}) · `
+                    : ''}
+                  {data.reputation?.completed_bookings
+                    ? `${plural(data.reputation.completed_bookings, 'arriendo', 'arriendos')} · `
+                    : ''}
                   En RUÉ desde {memberSince(owner.created_at)}
                 </Text>
               </View>
@@ -299,7 +315,7 @@ export default function VehicleScreen() {
                   <Row label="Total" value={clp(quote.total_clp)} strong />
                   {quote.deposit_clp > 0 ? (
                     <Text variant="caption" color="textSecondary">
-                      Además, garantía de {clp(quote.deposit_clp)} que se devuelve al terminar.
+                      El propietario pide una garantía de {clp(quote.deposit_clp)} que se coordina al retirar y se devuelve si todo está en orden.
                     </Text>
                   ) : null}
                   <Text variant="caption" color="textSecondary">
@@ -315,7 +331,19 @@ export default function VehicleScreen() {
             <Notice>Así ven tu publicación los arrendatarios.</Notice>
           </View>
         )}
+
+        {!isOwner ? (
+          <View style={{ marginTop: space.xl }}>
+            <Button label="Reportar esta publicación" variant="ghost" icon="flag-outline" small onPress={() => setReportOpen(true)} />
+          </View>
+        ) : null}
       </View>
+      <ReportSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        target={{ userId: v.owner_id, vehicleId: v.id }}
+        title="Reportar publicación"
+      />
     </Screen>
   );
 }

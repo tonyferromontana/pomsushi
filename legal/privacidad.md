@@ -1,0 +1,70 @@
+# Política de Privacidad de RUÉ
+
+Versión 2026-10-01 · BORRADOR PARA REVISIÓN DE UN ABOGADO
+
+En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolectamos, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos, de acuerdo con la Ley N° 19.628 sobre Protección de la Vida Privada y la Ley N° 21.719 que la modifica.
+
+## 1. Responsable
+
+[RAZÓN SOCIAL], RUT [RUT DE LA EMPRESA], con domicilio en [DIRECCIÓN], Chile. Contacto para privacidad: [CORREO DE PRIVACIDAD].
+
+## 2. Qué datos recolectamos
+
+- **Cuenta:** correo electrónico y contraseña (la contraseña se guarda cifrada).
+- **Perfil público:** nombre visible, foto y ciudad.
+- **Datos privados:** RUT, teléfono, fecha de nacimiento y dirección, si los entregas.
+- **Documentos de verificación:** fotos de tu cédula de identidad y licencia de conducir.
+- **Vehículos:** datos, fotos, ubicación referencial (ciudad y comuna) y precios de lo que publiques.
+- **Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Mercado Pago; RUÉ nunca los recibe ni los guarda.
+- **Datos bancarios:** si eres Propietario, la cuenta donde te transferimos.
+- **Mensajes y reseñas** que envíes dentro de la app.
+- **Datos técnicos:** tipo de dispositivo, token para enviarte notificaciones y registros de uso necesarios para que el servicio funcione y sea seguro.
+
+No recolectamos tu ubicación GPS.
+
+## 3. Para qué los usamos
+
+- Crear y administrar tu cuenta.
+- Permitir publicar, buscar, reservar, pagar y comunicarte con la otra parte de una reserva.
+- Verificar identidad y licencias, prevenir fraudes y mantener la seguridad de la comunidad.
+- Transferir a los Propietarios lo que les corresponde y cumplir obligaciones tributarias y legales.
+- Enviarte avisos sobre tus reservas.
+- Atender reclamos, reportes y solicitudes.
+- Mejorar el servicio con información agregada que no te identifica.
+
+## 4. Base legal
+
+Tratamos tus datos porque son necesarios para cumplir el contrato que celebras con RUÉ, porque la ley nos obliga (por ejemplo, en materias tributarias), por nuestro interés legítimo en la seguridad y prevención de fraudes, o porque nos diste tu consentimiento, que puedes retirar en cualquier momento.
+
+## 5. Con quién los compartimos
+
+- **La otra parte de tu reserva:** tu nombre visible, foto, reputación y lo necesario para coordinar la entrega. Tu RUT, teléfono, documentos y datos bancarios nunca se muestran a otros usuarios.
+- **Mercado Pago:** para procesar los pagos.
+- **Proveedores tecnológicos** que nos prestan servicios bajo contrato y confidencialidad: Supabase (base de datos y almacenamiento, con servidores en Brasil) y Expo (envío de notificaciones). Esto implica una transferencia internacional de datos, que realizamos con resguardos adecuados.
+- **Autoridades**, cuando la ley o una orden judicial lo exija.
+
+No vendemos tus datos personales.
+
+## 6. Cuánto tiempo los guardamos
+
+Mientras tengas una cuenta activa. Si eliminas tu cuenta, borramos o anonimizamos tus datos, salvo la información de reservas y pagos que debemos conservar por obligaciones legales y tributarias durante el plazo que exige la ley.
+
+## 7. Tus derechos
+
+Puedes ejercer tus derechos de acceso, rectificación, supresión, oposición, portabilidad y bloqueo escribiendo a [CORREO DE PRIVACIDAD]. Te responderemos dentro de los plazos legales. También puedes corregir tus datos directamente en la app y eliminar tu cuenta desde Perfil → Eliminar cuenta. Si no quedas conforme con nuestra respuesta, puedes recurrir a la autoridad de protección de datos competente.
+
+## 8. Seguridad
+
+Usamos cifrado en tránsito, controles de acceso por usuario en la base de datos y almacenamiento privado para los documentos. Ningún sistema es 100 % infalible, pero aplicamos medidas razonables y te avisaremos si ocurre un incidente que afecte tus datos, según lo exija la ley.
+
+## 9. Menores de edad
+
+RUÉ es solo para mayores de 18 años. No recolectamos datos de menores a sabiendas.
+
+## 10. Cambios
+
+Si cambiamos esta política, te avisaremos en la app antes de que el cambio entre en vigencia.
+
+## 11. Contacto
+
+[CORREO DE PRIVACIDAD] · [DIRECCIÓN]

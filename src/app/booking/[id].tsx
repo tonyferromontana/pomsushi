@@ -1,7 +1,11 @@
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Alert, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { Stars } from '@/components/forms';
+import { ReportSheet } from '@/components/ReportSheet';
 import {
   Avatar,
   Badge,
@@ -9,6 +13,7 @@ import {
   Card,
   Divider,
   ErrorState,
+  Input,
   LoadingState,
   Notice,
   Row,
@@ -31,28 +36,35 @@ type Detail = {
   vehicleTitle: string;
   other: Profile | null;
   events: BookingEvent[];
+  reviewed: boolean;
+  paymentPending: boolean;
 };
 
 async function loadDetail(id: string, userId: string): Promise<Detail> {
-  const { data, error } = await supabase
-    .from('bookings')
-    .select('*, vehicle:vehicles(title)')
-    .eq('id', id)
-    .single();
+  const { data, error } = await supabase.from('bookings').select('*').eq('id', id).single();
   if (error) throw error;
-  const booking = data as Booking & { vehicle: { title: string } | null };
+  const booking = data as Booking;
   const otherId = booking.owner_id === userId ? booking.renter_id : booking.owner_id;
-  const [other, events] = await Promise.all([
+  const [other, events, vehicle, review, payments] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', otherId).maybeSingle(),
     supabase.from('booking_events').select('*').eq('booking_id', id).order('created_at'),
+    supabase.rpc('booking_vehicle', { p_booking_id: id }),
+    supabase.from('reviews').select('id').eq('booking_id', id).eq('author_id', userId).maybeSingle(),
+    supabase.from('payments').select('status').eq('booking_id', id).in('status', ['pending', 'in_process']),
   ]);
   if (events.error) throw events.error;
   if (other.error) logError('booking.other', other.error);
+  if (vehicle.error) logError('booking.vehicle', vehicle.error);
+  if (review.error) logError('booking.review', review.error);
+  if (payments.error) logError('booking.payments', payments.error);
+  const v = (vehicle.data as { title: string }[] | null)?.[0];
   return {
     booking,
-    vehicleTitle: booking.vehicle?.title ?? 'Vehículo',
+    vehicleTitle: v?.title ?? 'Vehículo',
     other: (other.data as Profile) ?? null,
     events: (events.data ?? []) as BookingEvent[],
+    reviewed: !!review.data,
+    paymentPending: (payments.data ?? []).length > 0,
   };
 }
 
@@ -135,6 +147,13 @@ export default function BookingScreen() {
   const { data, error, loading, reload } = useAsync(() => loadDetail(id, userId as string), [id, userId], !!userId);
   const [busy, setBusy] = useState<BookingStatus | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payNotice, setPayNotice] = useState<string | null>(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [sendingReview, setSendingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Si la otra parte cambia el estado, se actualiza solo.
   useEffect(() => {
@@ -164,6 +183,65 @@ export default function BookingScreen() {
   const actions = actionsFor(role, b.status);
   const step = nextStepText(role, b);
   const flowIndex = BOOKING_FLOW.indexOf(b.status);
+
+  // Pago: el servidor crea el link de Mercado Pago con el monto de la reserva.
+  // Volver a la app NO confirma nada: la confirmación llega por el webhook y se ve en tiempo real.
+  const pay = async () => {
+    setPaying(true);
+    setActionError(null);
+    setPayNotice(null);
+    try {
+      track('checkout_started', { total: b.total_clp });
+      const redirectUrl = Linking.createURL('pago');
+      const { data: res, error: err } = await supabase.functions.invoke('mp-create-preference', {
+        body: { booking_id: b.id, redirect_url: redirectUrl },
+      });
+      if (err) {
+        const ctx = (err as { context?: Response }).context;
+        const body = ctx ? ((await ctx.json().catch(() => null)) as { error?: string } | null) : null;
+        throw new Error(body?.error ?? 'No pudimos abrir el pago. Inténtalo de nuevo.');
+      }
+      const url = (res as { checkout_url?: string }).checkout_url;
+      if (!url) throw new Error('No pudimos abrir el pago. Inténtalo de nuevo.');
+      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+      if (result.type === 'success') {
+        const status = Linking.parse(result.url).queryParams?.status;
+        setPayNotice(
+          status === 'approved'
+            ? 'Pago recibido. Estamos confirmando tu reserva…'
+            : status === 'pending' || status === 'in_process'
+              ? 'Tu pago está pendiente. Te avisaremos cuando se apruebe.'
+              : 'El pago no se completó. Puedes intentarlo de nuevo.',
+        );
+      }
+      await reload();
+    } catch (e) {
+      logError('pay', e);
+      setActionError(e instanceof Error ? e.message : friendlyError(e));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const sendReview = async () => {
+    if (rating < 1) return;
+    setSendingReview(true);
+    setReviewError(null);
+    try {
+      const { error: err } = await supabase.rpc('submit_review', {
+        p_booking_id: b.id,
+        p_rating: rating,
+        p_comment: comment.trim() || null,
+      });
+      if (err) throw err;
+      await reload();
+    } catch (e) {
+      logError('review', e);
+      setReviewError(friendlyError(e));
+    } finally {
+      setSendingReview(false);
+    }
+  };
 
   const run = async (a: Action) => {
     const go = async () => {
@@ -217,10 +295,29 @@ export default function BookingScreen() {
 
       {role === 'renter' && b.status === 'aceptada' ? (
         <View style={{ gap: space.sm, marginTop: space.xl }}>
-          <Button label={`Pagar ${clp(b.total_clp)}`} icon="card-outline" disabled />
+          <Button label={`Pagar ${clp(b.total_clp)}`} icon="card-outline" onPress={pay} loading={paying} />
+          {payNotice || data.paymentPending ? (
+            <Notice tone="info">{payNotice ?? 'Tienes un pago pendiente de aprobación. Te avisaremos apenas se confirme.'}</Notice>
+          ) : null}
           <Text variant="caption" color="textSecondary" align="center">
-            El pago con Mercado Pago se activa en la próxima etapa del desarrollo.
+            Pago seguro con Mercado Pago. RUÉ no guarda los datos de tu tarjeta.
           </Text>
+        </View>
+      ) : null}
+
+      {b.status === 'finalizada' ? (
+        <View style={{ gap: space.md, marginTop: space.xl }}>
+          <SectionHeader title={role === 'owner' ? '¿Cómo fue el arrendatario?' : '¿Cómo te fue?'} />
+          {data.reviewed ? (
+            <Notice tone="success">Gracias por dejar tu reseña.</Notice>
+          ) : (
+            <>
+              <Stars value={rating} onChange={setRating} />
+              <Input placeholder="Cuéntale a la comunidad (opcional)" value={comment} onChangeText={setComment} multiline maxLength={800} />
+              {reviewError ? <Notice tone="error">{reviewError}</Notice> : null}
+              <Button label="Enviar reseña" onPress={sendReview} loading={sendingReview} disabled={rating < 1} />
+            </>
+          )}
         </View>
       ) : null}
 
@@ -281,7 +378,7 @@ export default function BookingScreen() {
             <Row label="Recibes" value={clp(b.owner_payout_clp)} strong />
           </>
         )}
-        {b.deposit_clp > 0 ? <Row label="Garantía" value={clp(b.deposit_clp)} /> : null}
+        {b.deposit_clp > 0 ? <Row label="Garantía (se coordina con el propietario)" value={clp(b.deposit_clp)} /> : null}
       </View>
 
       <SectionHeader title="Historial" />
@@ -299,6 +396,16 @@ export default function BookingScreen() {
           </View>
         ))}
       </View>
+
+      <View style={{ marginTop: space.xxl }}>
+        <Button label="Reportar un problema" variant="ghost" icon="flag-outline" small onPress={() => setReportOpen(true)} />
+      </View>
+      <ReportSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        target={{ userId: other?.id, bookingId: b.id }}
+        title="Reportar esta reserva"
+      />
     </Screen>
   );
 }

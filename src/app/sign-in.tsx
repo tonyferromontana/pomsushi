@@ -1,7 +1,10 @@
+import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, View, type TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View, type TextInput } from 'react-native';
 
+import { Checkbox } from '@/components/forms';
 import { Button, Input, Notice, Screen, Segmented, Text, Wordmark } from '@/components/ui';
+import { TERMS_VERSION } from '@/legal/generated';
 import { track } from '@/lib/analytics';
 import { friendlyError, logError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
@@ -17,6 +20,8 @@ export default function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isAdult, setIsAdult] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 
   const submit = async () => {
@@ -26,6 +31,8 @@ export default function SignInScreen() {
     if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) return setError('Escribe un correo válido.');
     if (password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
     if (mode === 'signup' && name.trim().length < 2) return setError('Cuéntanos cómo te llamas.');
+    if (mode === 'signup' && !isAdult) return setError('RUÉ es solo para mayores de 18 años.');
+    if (mode === 'signup' && !acceptTerms) return setError('Para crear tu cuenta debes aceptar los Términos y la Política de Privacidad.');
 
     setBusy(true);
     try {
@@ -37,7 +44,7 @@ export default function SignInScreen() {
         const { data, error: err } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { data: { display_name: name.trim() } },
+          options: { data: { display_name: name.trim(), terms_version: TERMS_VERSION } },
         });
         if (err) throw err;
         track('signup_completed');
@@ -57,7 +64,10 @@ export default function SignInScreen() {
   return (
     <Screen edges={['top', 'bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={{ flex: 1, justifyContent: 'center', gap: space.xl }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: space.xl, paddingVertical: space.xl }}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={{ gap: space.md }}>
             <Wordmark size={48} />
             <Text variant="h2">Haz producir lo que tienes parado.</Text>
@@ -116,11 +126,32 @@ export default function SignInScreen() {
             />
           </View>
 
+          {mode === 'signup' ? (
+            <View style={{ gap: space.md }}>
+              <Checkbox checked={isAdult} onChange={setIsAdult}>
+                Tengo 18 años o más.
+              </Checkbox>
+              <Checkbox checked={acceptTerms} onChange={setAcceptTerms}>
+                <Text variant="bodySmall">
+                  Acepto los{' '}
+                  <Link href={{ pathname: '/legal/[doc]', params: { doc: 'terminos' } }}>
+                    <Text variant="bodySmall" color="accent">Términos y Condiciones</Text>
+                  </Link>{' '}
+                  y la{' '}
+                  <Link href={{ pathname: '/legal/[doc]', params: { doc: 'privacidad' } }}>
+                    <Text variant="bodySmall" color="accent">Política de Privacidad</Text>
+                  </Link>
+                  .
+                </Text>
+              </Checkbox>
+            </View>
+          ) : null}
+
           {error ? <Notice tone="error">{error}</Notice> : null}
           {info ? <Notice tone="success">{info}</Notice> : null}
 
           <Button label={mode === 'signin' ? 'Entrar' : 'Crear cuenta'} onPress={submit} loading={busy} />
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   );

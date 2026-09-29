@@ -1,13 +1,15 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DateRangeField } from '@/components/DateRangeField';
 import { Chip, EmptyState, ErrorState, Input, Skeleton, Text, Wordmark } from '@/components/ui';
 import { VehicleCard } from '@/components/VehicleCard';
 import { track } from '@/lib/analytics';
+import { useAuth } from '@/lib/auth';
 import { PURPOSES, VEHICLE_TYPES } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
@@ -42,6 +44,29 @@ async function fetchPage(f: Filters, offset: number): Promise<VehicleSearchResul
 export default function ExploreScreen() {
   const [filters, setFilters] = useState<Filters>({ type: null, city: '', start: null, end: null, purpose: null });
   const [cityDraft, setCityDraft] = useState('');
+  const { userId } = useAuth();
+  const [unread, setUnread] = useState(0);
+
+  // Cantidad de avisos sin leer (se actualiza al volver a esta pantalla)
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+      let alive = true;
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .is('read_at', null)
+        .then(({ count, error: err }) => {
+          if (err) logError('notifications.count', err);
+          else if (alive) setUnread(count ?? 0);
+        });
+      return () => {
+        alive = false;
+      };
+    }, [userId]),
+  );
+
   const filtersKey = JSON.stringify(filters);
   const first = useAsync(() => fetchPage(filters, 0), [filtersKey]);
   const [extra, setExtra] = useState<{ key: string; items: VehicleSearchResult[]; done: boolean } | null>(null);
@@ -114,8 +139,17 @@ export default function ExploreScreen() {
 
   const header = (
     <View style={{ gap: space.lg, paddingBottom: space.xl }}>
-      <View style={{ paddingTop: space.md }}>
+      <View style={styles.topBar}>
         <Wordmark size={26} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={unread ? `Avisos, ${unread} sin leer` : 'Avisos'}
+          onPress={() => router.push('/notifications')}
+          hitSlop={8}
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
+          {unread ? <View style={styles.unreadDot} /> : null}
+        </Pressable>
       </View>
       <Text variant="h1">¿Qué necesitas mover?</Text>
 
@@ -243,4 +277,16 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
+  topBar: { paddingTop: space.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  unreadDot: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: colors.background,
+  },
 });

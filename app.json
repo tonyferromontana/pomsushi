@@ -2,7 +2,7 @@
   "expo": {
     "name": "RUÉ",
     "slug": "rue",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rue",
@@ -13,7 +13,10 @@
       "bundleIdentifier": "cl.rue.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "RUÉ usa tus fotos para mostrar tu vehículo en la publicación.",
-        "NSCameraUsageDescription": "RUÉ usa la cámara para fotografiar tu vehículo."
+        "NSCameraUsageDescription": "RUÉ usa la cámara para fotografiar tu vehículo y tus documentos de verificación."
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "android": {
@@ -22,7 +25,16 @@
         "backgroundColor": "#101114",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "output": "single",
@@ -36,7 +48,7 @@
         "expo-image-picker",
         {
           "photosPermission": "RUÉ usa tus fotos para mostrar tu vehículo en la publicación.",
-          "cameraPermission": "RUÉ usa la cámara para fotografiar tu vehículo."
+          "cameraPermission": "RUÉ usa la cámara para fotografiar tu vehículo y tus documentos de verificación."
         }
       ],
       [
@@ -46,10 +58,19 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#D7FF3F",
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "description": "Arrienda autos, motos, camionetas, vans, furgones y camiones directo de sus dueños. Haz producir lo que tienes parado.",
+    "extra": {}
   }
 }

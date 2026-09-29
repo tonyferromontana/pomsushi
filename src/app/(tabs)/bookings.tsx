@@ -13,15 +13,14 @@ import { useAsync } from '@/lib/useAsync';
 import { colors, space } from '@/theme';
 
 type Side = 'renter' | 'owner';
-type BookingRow = Booking & { vehicle: { title: string; vehicle_type: VehicleType } | null };
+type BookingRow = Pick<
+  Booking,
+  'id' | 'vehicle_id' | 'status' | 'start_date' | 'end_date' | 'days' | 'total_clp' | 'owner_payout_clp' | 'created_at'
+> & { vehicle_title: string; vehicle_type: VehicleType };
 
-async function loadBookings(userId: string, side: Side): Promise<BookingRow[]> {
-  const { data, error } = await supabase
-    .from('bookings')
-    .select('*, vehicle:vehicles(title, vehicle_type)')
-    .eq(side === 'renter' ? 'renter_id' : 'owner_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(100);
+// my_bookings() devuelve el título aunque el vehículo esté pausado.
+async function loadBookings(side: Side): Promise<BookingRow[]> {
+  const { data, error } = await supabase.rpc('my_bookings', { p_side: side, p_limit: 100 });
   if (error) throw error;
   return (data ?? []) as BookingRow[];
 }
@@ -30,7 +29,7 @@ export default function BookingsScreen() {
   const { userId } = useAuth();
   const [side, setSide] = useState<Side>('renter');
   const { data, error, loading, reload } = useAsync(
-    () => loadBookings(userId as string, side),
+    () => loadBookings(side),
     [userId, side],
     !!userId,
   );
@@ -96,11 +95,11 @@ export default function BookingsScreen() {
                   ) : null}
                 </View>
                 <Text variant="h3" numberOfLines={1}>
-                  {b.vehicle?.title ?? 'Vehículo'}
+                  {b.vehicle_title}
                 </Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                   <Text variant="bodySmall" color="textSecondary">
-                    {b.vehicle ? `${vehicleTypeLabel(b.vehicle.vehicle_type)} · ` : ''}
+                    {`${vehicleTypeLabel(b.vehicle_type)} · `}
                     {dateRange(b.start_date, b.end_date)} · {plural(b.days, 'día', 'días')}
                   </Text>
                   <Price amount={side === 'owner' ? b.owner_payout_clp : b.total_clp} />

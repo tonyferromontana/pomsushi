@@ -22,5 +22,8 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
   $PSQL -f "$f"
 done
 echo "→ pruebas"
-$PSQL -f "$ROOT/supabase/tests/booking_flow.test.sql"
+for t in "$ROOT"/supabase/tests/*.test.sql; do
+  echo "   · $(basename "$t")"
+  $PSQL -f "$t"
+done
 echo "✅ migraciones y pruebas OK"

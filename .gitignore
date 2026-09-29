@@ -44,3 +44,6 @@ example
 
 # RUÉ: variables de entorno reales nunca van al repositorio
 .env
+
+# Deno (Edge Functions)
+deno.lock
