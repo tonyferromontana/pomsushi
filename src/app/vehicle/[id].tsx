@@ -20,8 +20,10 @@ import {
   SectionHeader,
   Text,
 } from '@/components/ui';
+import { Checkbox } from '@/components/forms';
 import { ReportSheet } from '@/components/ReportSheet';
 import { VehiclePhoto } from '@/components/VehicleCard';
+import { TERMS_VERSION } from '@/legal/generated';
 import { track } from '@/lib/analytics';
 import { attributeSummary, PURPOSES, purposeLabel, vehicleTypeLabel } from '@/lib/catalog';
 import { useAuth } from '@/lib/auth';
@@ -68,6 +70,8 @@ export default function VehicleScreen() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptData, setAcceptData] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
@@ -127,6 +131,9 @@ export default function VehicleScreen() {
         p_end: end,
         p_purpose: purpose,
         p_message: message.trim() || null,
+        p_terms_version: TERMS_VERSION,
+        p_accept_terms: acceptTerms,
+        p_accept_data_sharing: acceptData,
       });
       if (err) throw err;
       track('booking_requested', { days: quote.days, vehicle_type: v.vehicle_type });
@@ -169,7 +176,7 @@ export default function VehicleScreen() {
         label="Solicitar"
         onPress={request}
         loading={sending}
-        disabled={!quote || quoting}
+        disabled={!quote || quoting || !acceptTerms}
         style={{ paddingHorizontal: space.xxl }}
       />
     </View>
@@ -234,6 +241,10 @@ export default function VehicleScreen() {
           <Row label="Precio por día" value={clp(v.daily_price_clp)} />
           {v.weekly_price_clp ? <Row label="Precio por semana" value={clp(v.weekly_price_clp)} /> : null}
           {v.deposit_clp > 0 ? <Row label="Garantía (se coordina al retirar)" value={clp(v.deposit_clp)} /> : null}
+          {v.plate ? <Row label="Patente" value={v.plate} /> : null}
+          <Row label="Kilometraje" value={v.km_per_day ? `${v.km_per_day} km por día` : 'Libre'} />
+          <Row label="Combustible" value={v.fuel_policy === 'lleno' ? 'Se devuelve con estanque lleno' : 'Se devuelve con el mismo nivel'} />
+          {v.pickup_location ? <Row label="Entrega" value={v.pickup_location} /> : null}
         </View>
 
         {v.description ? (
@@ -321,6 +332,34 @@ export default function VehicleScreen() {
                   <Text variant="caption" color="textSecondary">
                     No se cobra nada hasta que el propietario acepte.
                   </Text>
+                </View>
+              ) : null}
+              {v.insurance_info ? (
+                <Notice tone="info">Seguro declarado por el propietario: {v.insurance_info}</Notice>
+              ) : (
+                <Notice tone="warning">
+                  El propietario no informó un seguro de daños. El SOAP no cubre daños al vehículo ni a terceros.
+                </Notice>
+              )}
+              {quote ? (
+                <View style={{ gap: space.md }}>
+                  <Checkbox checked={acceptTerms} onChange={setAcceptTerms}>
+                    <Text variant="bodySmall">
+                      He leído y acepto los{' '}
+                      <Text
+                        variant="bodySmall"
+                        color="accent"
+                        onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terminos' } })}
+                      >
+                        Términos y Condiciones
+                      </Text>{' '}
+                      (versión {TERMS_VERSION}) y las condiciones de esta reserva.
+                    </Text>
+                  </Checkbox>
+                  <Checkbox checked={acceptData} onChange={setAcceptData}>
+                    Autorizo a RUÉ a comunicar mis datos de identificación y contacto al propietario y a su abogado
+                    acreditado solo si hay un incidente verificable con esta reserva, según las cláusulas 16 a 19.
+                  </Checkbox>
                 </View>
               ) : null}
               {sendError ? <Notice tone="error">{sendError}</Notice> : null}

@@ -1,6 +1,6 @@
 # Política de Privacidad de RUÉ
 
-Versión 2026-10-01 · BORRADOR PARA REVISIÓN DE UN ABOGADO
+Versión 2026-09-30 · BORRADOR PARA REVISIÓN DE UN ABOGADO
 
 En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolectamos, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos, de acuerdo con la Ley N° 19.628 sobre Protección de la Vida Privada y la Ley N° 21.719 que la modifica.
 
@@ -13,14 +13,15 @@ En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolec
 - **Cuenta:** correo electrónico y contraseña (la contraseña se guarda cifrada).
 - **Perfil público:** nombre visible, foto y ciudad.
 - **Datos privados:** RUT, teléfono, fecha de nacimiento y dirección, si los entregas.
-- **Documentos de verificación:** fotos de tu cédula de identidad y licencia de conducir.
+- **Documentos de verificación:** fotos de tu cédula de identidad y licencia de conducir; si eres arrendador, el Certificado de Anotaciones Vigentes y el padrón de tu vehículo.
+- **Actas de entrega y devolución:** kilometraje, combustible, observaciones y fotos del vehículo, visibles solo para las partes de la reserva.
 - **Vehículos:** datos, fotos, ubicación referencial (ciudad y comuna) y precios de lo que publiques.
 - **Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Mercado Pago; RUÉ nunca los recibe ni los guarda.
 - **Datos bancarios:** si eres Propietario, la cuenta donde te transferimos.
 - **Mensajes y reseñas** que envíes dentro de la app.
 - **Datos técnicos:** tipo de dispositivo, token para enviarte notificaciones y registros de uso necesarios para que el servicio funcione y sea seguro.
 
-No recolectamos tu ubicación GPS.
+No recolectamos tu ubicación GPS ni usamos reconocimiento facial o biometría.
 
 ## 3. Para qué los usamos
 
@@ -38,7 +39,8 @@ Tratamos tus datos porque son necesarios para cumplir el contrato que celebras c
 
 ## 5. Con quién los compartimos
 
-- **La otra parte de tu reserva:** tu nombre visible, foto, reputación y lo necesario para coordinar la entrega. Tu RUT, teléfono, documentos y datos bancarios nunca se muestran a otros usuarios.
+- **La otra parte de tu reserva:** tu nombre visible, foto, reputación y lo necesario para coordinar la entrega. Tu RUT, teléfono, documentos y datos bancarios no se muestran a otros usuarios.
+- **El arrendador y su abogado, solo ante un incidente:** si autorizaste la comunicación de datos al reservar (casilla C de los Términos) y existen antecedentes verificables de daños, accidente, falta de restitución, uso indebido u otros hechos relacionados con esa reserva, podemos comunicar al arrendador afectado y a su abogado acreditado tu nombre completo, RUT, domicilio declarado, correo, teléfono y los antecedentes de esa reserva, solo para gestionar el reclamo o ejercer acciones legales. Cada comunicación queda registrada (destinatario, fecha, datos y motivo) y te avisamos, salvo que la ley lo impida. Nunca entregamos datos bancarios, claves, biometría ni información de otras reservas, y la copia de tu cédula o licencia solo si es específicamente necesaria. Las mismas reglas aplican cuando el arrendatario necesita datos del arrendador para ejercer sus derechos.
 - **Mercado Pago:** para procesar los pagos.
 - **Proveedores tecnológicos** que nos prestan servicios bajo contrato y confidencialidad: Supabase (base de datos y almacenamiento, con servidores en Brasil) y Expo (envío de notificaciones). Esto implica una transferencia internacional de datos, que realizamos con resguardos adecuados.
 - **Autoridades**, cuando la ley o una orden judicial lo exija.
@@ -47,7 +49,7 @@ No vendemos tus datos personales.
 
 ## 6. Cuánto tiempo los guardamos
 
-Mientras tengas una cuenta activa. Si eliminas tu cuenta, borramos o anonimizamos tus datos, salvo la información de reservas y pagos que debemos conservar por obligaciones legales y tributarias durante el plazo que exige la ley.
+Mientras tengas una cuenta activa y según los plazos de cada categoría: [PERÍODOS DE CONSERVACIÓN POR CATEGORÍA]. Las imágenes de cédula y licencia no se conservan durante toda la vida de la cuenta: se eliminan una vez cumplida su finalidad. Si eliminas tu cuenta, borramos o anonimizamos tus datos, salvo la información de reservas y pagos que debemos conservar por obligaciones legales y tributarias, y los antecedentes de un incidente mientras exista una razón jurídica vigente.
 
 ## 7. Tus derechos
 

@@ -63,6 +63,8 @@ function RootNavigator() {
         <Stack.Screen name="notifications" options={{ title: 'Avisos' }} />
         <Stack.Screen name="verify" options={{ title: 'Verificación' }} />
         <Stack.Screen name="payout" options={{ title: 'Datos bancarios' }} />
+        <Stack.Screen name="vehicle-verify" options={{ title: 'Verificar vehículo' }} />
+        <Stack.Screen name="handover" options={{ title: 'Acta', presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />

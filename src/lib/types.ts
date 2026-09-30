@@ -89,6 +89,24 @@ export type Vehicle = {
   deposit_clp: number;
   min_days: number;
   verified: boolean;
+  verified_until: string | null;
+  plate: string | null;
+  km_per_day: number | null;
+  pickup_location: string | null;
+  fuel_policy: 'mismo_nivel' | 'lleno';
+  insurance_info: string | null;
+  created_at: string;
+};
+
+export type Handover = {
+  id: string;
+  booking_id: string;
+  kind: 'entrega' | 'devolucion';
+  author_id: string;
+  odometer_km: number | null;
+  fuel_level: number | null;
+  notes: string | null;
+  photo_paths: string[];
   created_at: string;
 };
 

@@ -7,6 +7,7 @@ import { VehiclePhoto } from '@/components/VehicleCard';
 import { useAuth } from '@/lib/auth';
 import { vehicleTypeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
+import { fromISODate, shortDate, startOfToday } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { ListingStatus, Vehicle } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
@@ -112,6 +113,22 @@ export default function GarageScreen() {
                     <Price amount={v.daily_price_clp} suffix="/ día" />
                   </View>
                 </View>
+                {(() => {
+                  const valid = v.verified && v.verified_until && fromISODate(v.verified_until) >= startOfToday();
+                  return valid && v.verified_until ? (
+                    <Text variant="caption" color="accent">
+                      Dominio verificado hasta el {shortDate(v.verified_until)}
+                    </Text>
+                  ) : (
+                    <Button
+                      small
+                      variant="secondary"
+                      icon="shield-checkmark-outline"
+                      label={v.verified_until ? 'Renovar certificado del vehículo' : 'Verificar que el vehículo es tuyo'}
+                      onPress={() => router.push({ pathname: '/vehicle-verify', params: { id: v.id } })}
+                    />
+                  );
+                })()}
                 {v.vehicle_photos.length === 0 ? (
                   <Text variant="caption" color="warning">
                     Agrega fotos: las publicaciones con fotos reciben muchas más solicitudes.

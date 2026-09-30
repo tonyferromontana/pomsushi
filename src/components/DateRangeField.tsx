@@ -117,3 +117,72 @@ const styles = StyleSheet.create({
     gap: space.lg,
   },
 });
+
+/** Campo de una sola fecha (por ejemplo, fecha de emisión de un certificado). */
+export function DateField({
+  label,
+  value,
+  onChange,
+  minimumDate,
+  maximumDate,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (iso: string) => void;
+  minimumDate?: Date;
+  maximumDate?: Date;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<Date>(value ? fromISODate(value) : maximumDate ?? startOfToday());
+
+  const show = () => {
+    const current = value ? fromISODate(value) : maximumDate ?? startOfToday();
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: current,
+        mode: 'date',
+        minimumDate,
+        maximumDate,
+        onChange: (event: DateTimePickerEvent, d?: Date) => {
+          if (event.type === 'set' && d) onChange(toISODate(d));
+        },
+      });
+      return;
+    }
+    setDraft(current);
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <FieldButton label={label} icon="calendar-outline" placeholder="Elegir fecha" value={value ? shortDate(value) : null} onPress={show} />
+      {Platform.OS === 'ios' ? (
+        <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+          <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+            <Pressable style={styles.sheet} onPress={() => undefined}>
+              <Text variant="h3">{label}</Text>
+              <DateTimePicker
+                value={draft}
+                mode="date"
+                display="inline"
+                themeVariant="dark"
+                accentColor={colors.accent}
+                locale="es-CL"
+                minimumDate={minimumDate}
+                maximumDate={maximumDate}
+                onChange={(_e, d) => d && setDraft(d)}
+              />
+              <Button
+                label="Listo"
+                onPress={() => {
+                  onChange(toISODate(draft));
+                  setOpen(false);
+                }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : null}
+    </>
+  );
+}

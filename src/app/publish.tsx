@@ -37,6 +37,11 @@ type Form = {
   weekly_price: string;
   deposit: string;
   min_days: string;
+  plate: string;
+  km_per_day: string;
+  pickup_location: string;
+  fuel_policy: 'mismo_nivel' | 'lleno';
+  insurance_info: string;
 };
 
 const EMPTY: Form = {
@@ -54,6 +59,11 @@ const EMPTY: Form = {
   weekly_price: '',
   deposit: '',
   min_days: '1',
+  plate: '',
+  km_per_day: '',
+  pickup_location: '',
+  fuel_policy: 'mismo_nivel',
+  insurance_info: '',
 };
 
 const STEPS = ['Tipo', 'Datos', 'Fotos', 'Precio', 'Revisar'] as const;
@@ -82,6 +92,7 @@ function validate(step: number, f: Form, photos: PhotoItem[]): string | null {
     const y = toInt(f.year);
     if (!y || y < 1950 || y > new Date().getFullYear() + 1) return 'Revisa el año.';
     if (f.city.trim().length < 2) return '¿En qué ciudad está?';
+    if (!/^[A-Z]{2,4}[0-9]{2,4}$/.test(f.plate)) return 'Revisa la patente, por ejemplo ABCD12.';
   }
   if (step === 2 && photos.length === 0) return 'Agrega al menos una foto.';
   if (step === 3) {
@@ -91,6 +102,8 @@ function validate(step: number, f: Form, photos: PhotoItem[]): string | null {
     if (w !== null && w < 1000) return 'Revisa el precio semanal.';
     const m = toInt(f.min_days);
     if (!m || m < 1 || m > 90) return 'Los días mínimos deben estar entre 1 y 90.';
+    const k = toInt(f.km_per_day);
+    if (k !== null && (k < 10 || k > 5000)) return 'El kilometraje por día debe estar entre 10 y 5.000 km, o déjalo vacío si es libre.';
   }
   return null;
 }
@@ -148,6 +161,11 @@ export default function PublishScreen() {
           weekly_price: veh.weekly_price_clp ? thousands(String(veh.weekly_price_clp)) : '',
           deposit: veh.deposit_clp ? thousands(String(veh.deposit_clp)) : '',
           min_days: String(veh.min_days),
+          plate: veh.plate ?? '',
+          km_per_day: veh.km_per_day ? String(veh.km_per_day) : '',
+          pickup_location: veh.pickup_location ?? '',
+          fuel_policy: veh.fuel_policy ?? 'mismo_nivel',
+          insurance_info: veh.insurance_info ?? '',
         });
         const items = (ph ?? []).map((p: { id: string; storage_path: string }) => ({ key: p.id, path: p.storage_path }));
         setPhotos(items);
@@ -228,6 +246,11 @@ export default function PublishScreen() {
         weekly_price_clp: toInt(form.weekly_price),
         deposit_clp: toInt(form.deposit) ?? 0,
         min_days: toInt(form.min_days) ?? 1,
+        plate: form.plate,
+        km_per_day: toInt(form.km_per_day),
+        pickup_location: form.pickup_location.trim() || null,
+        fuel_policy: form.fuel_policy,
+        insurance_info: form.insurance_info.trim() || null,
       };
 
       const { error } = editId
@@ -374,6 +397,14 @@ export default function PublishScreen() {
             </View>
           </View>
           <Input
+            label="Patente"
+            placeholder="ABCD12"
+            value={form.plate}
+            onChangeText={(v) => set('plate', v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+            autoCapitalize="characters"
+            hint="Debe coincidir con el Certificado de Anotaciones Vigentes."
+          />
+          <Input
             label="Comuna (opcional)"
             placeholder="Providencia"
             value={form.comuna}
@@ -507,6 +538,39 @@ export default function PublishScreen() {
             hint="Monto que respalda el cuidado del vehículo y se devuelve al terminar."
           />
           <Input
+            label="Kilómetros por día (opcional)"
+            placeholder="Vacío = libre"
+            keyboardType="number-pad"
+            value={form.km_per_day}
+            onChangeText={(v) => set('km_per_day', digits(v).slice(0, 4))}
+          />
+          <View style={{ gap: space.sm }}>
+            <Text variant="label" color="textSecondary">
+              Combustible o carga al devolver
+            </Text>
+            <View style={styles.wrap}>
+              <Chip label="Mismo nivel" selected={form.fuel_policy === 'mismo_nivel'} onPress={() => set('fuel_policy', 'mismo_nivel')} />
+              <Chip label="Estanque lleno" selected={form.fuel_policy === 'lleno'} onPress={() => set('fuel_policy', 'lleno')} />
+            </View>
+          </View>
+          <Input
+            label="Lugar de entrega"
+            placeholder="Ej: Metro Tobalaba, Providencia"
+            value={form.pickup_location}
+            onChangeText={(v) => set('pickup_location', v)}
+            maxLength={160}
+            hint="Un punto de referencia. No pongas tu dirección exacta."
+          />
+          <Input
+            label="Seguro (opcional)"
+            placeholder="Aseguradora, cobertura y deducible"
+            value={form.insurance_info}
+            onChangeText={(v) => set('insurance_info', v)}
+            multiline
+            maxLength={500}
+            hint="Tu póliza debe admitir expresamente el arriendo a terceros. El SOAP no cubre daños."
+          />
+          <Input
             label="Mínimo de días"
             keyboardType="number-pad"
             value={form.min_days}
@@ -563,12 +627,13 @@ export default function PublishScreen() {
             </View>
           </View>
           <Checkbox checked={declared} onChange={setDeclared}>
-            Declaro que soy el dueño o estoy autorizado para arrendar este vehículo, y que tiene al día su permiso de
-            circulación, revisión técnica y SOAP.
+            Declaro que soy el propietario inscrito de este vehículo en el Registro Civil y que tiene al día su permiso de
+            circulación, revisión técnica y SOAP. Informé sus desperfectos y daños previos, y no tiene dispositivos de
+            seguimiento ocultos.
           </Checkbox>
           <Notice>
-            Pronto podrás subir los documentos del vehículo para marcarlo como verificado. Los documentos nunca se
-            muestran a otros usuarios.
+            Después de guardar, acredita el dominio en Mis vehículos → Verificar, con el Certificado de Anotaciones
+            Vigentes y el padrón. Los documentos nunca se muestran a otros usuarios.
           </Notice>
         </View>
       ) : null}

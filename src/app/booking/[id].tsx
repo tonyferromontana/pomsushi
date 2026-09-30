@@ -1,8 +1,9 @@
 import * as Linking from 'expo-linking';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useState } from 'react';
-import { Alert, RefreshControl, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Image } from 'expo-image';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Stars } from '@/components/forms';
 import { ReportSheet } from '@/components/ReportSheet';
@@ -27,9 +28,9 @@ import { BOOKING_FLOW, BOOKING_STATUS, purposeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { clp, dateRange, plural, shortDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import type { Booking, BookingEvent, BookingStatus, Profile } from '@/lib/types';
+import type { Booking, BookingEvent, BookingStatus, Handover, Profile } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
-import { colors, space } from '@/theme';
+import { colors, radius, space } from '@/theme';
 
 type Detail = {
   booking: Booking;
@@ -38,6 +39,7 @@ type Detail = {
   events: BookingEvent[];
   reviewed: boolean;
   paymentPending: boolean;
+  handovers: (Handover & { photoUrls: string[] })[];
 };
 
 async function loadDetail(id: string, userId: string): Promise<Detail> {
@@ -52,6 +54,18 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     supabase.from('reviews').select('id').eq('booking_id', id).eq('author_id', userId).maybeSingle(),
     supabase.from('payments').select('status').eq('booking_id', id).in('status', ['pending', 'in_process']),
   ]);
+  const handoverRes = await supabase.from('booking_handovers').select('*').eq('booking_id', id).order('created_at');
+  if (handoverRes.error) logError('booking.handovers', handoverRes.error);
+  const rawHandovers = (handoverRes.data ?? []) as Handover[];
+  // Fotos privadas: links firmados que expiran en 1 hora
+  const allPaths = rawHandovers.flatMap((h) => h.photo_paths);
+  let signed: Record<string, string> = {};
+  if (allPaths.length > 0) {
+    const res = await supabase.storage.from('handovers').createSignedUrls(allPaths, 3600);
+    if (res.error) logError('booking.handoverPhotos', res.error);
+    signed = Object.fromEntries((res.data ?? []).filter((r) => r.signedUrl).map((r) => [r.path, r.signedUrl]));
+  }
+  const handovers = rawHandovers.map((h) => ({ ...h, photoUrls: h.photo_paths.map((p) => signed[p]).filter(Boolean) }));
   if (events.error) throw events.error;
   if (other.error) logError('booking.other', other.error);
   if (vehicle.error) logError('booking.vehicle', vehicle.error);
@@ -65,6 +79,7 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     events: (events.data ?? []) as BookingEvent[],
     reviewed: !!review.data,
     paymentPending: (payments.data ?? []).length > 0,
+    handovers,
   };
 }
 
@@ -145,6 +160,15 @@ export default function BookingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { userId } = useAuth();
   const { data, error, loading, reload } = useAsync(() => loadDetail(id, userId as string), [id, userId], !!userId);
+
+  // Al volver de completar un acta, se recarga (no en la primera visita).
+  const focusedOnce = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current) void reload();
+      focusedOnce.current = true;
+    }, [reload]),
+  );
   const [busy, setBusy] = useState<BookingStatus | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -381,6 +405,52 @@ export default function BookingScreen() {
         {b.deposit_clp > 0 ? <Row label="Garantía (se coordina con el propietario)" value={clp(b.deposit_clp)} /> : null}
       </View>
 
+      {b.status === 'confirmada' || b.status === 'en_curso' || data.handovers.length > 0 ? (
+        <>
+          <SectionHeader title="Actas de entrega y devolución" />
+          <View style={{ gap: space.md }}>
+            {data.handovers.length === 0 ? (
+              <Text variant="bodySmall" color="textSecondary">
+                Al entregar el vehículo, completen juntos el acta con kilometraje, combustible y fotos.
+              </Text>
+            ) : null}
+            {data.handovers.map((h) => (
+              <Card key={h.id} style={{ gap: space.sm }}>
+                <Text variant="title">
+                  {h.kind === 'entrega' ? 'Entrega' : 'Devolución'} · {h.author_id === userId ? 'tú' : other?.display_name || 'la otra parte'}
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  {shortDate(new Date(h.created_at))}
+                  {h.odometer_km !== null ? ` · ${h.odometer_km.toLocaleString('es-CL')} km` : ''}
+                  {h.fuel_level !== null ? ` · combustible ${h.fuel_level} %` : ''}
+                </Text>
+                {h.notes ? <Text variant="bodySmall">{h.notes}</Text> : null}
+                {h.photoUrls.length > 0 ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+                    {h.photoUrls.map((u) => (
+                      <Image key={u} source={{ uri: u }} style={styles.handoverPhoto} contentFit="cover" />
+                    ))}
+                  </ScrollView>
+                ) : null}
+              </Card>
+            ))}
+            {b.status === 'confirmada' || b.status === 'en_curso' ? (
+              <Button
+                label={b.status === 'confirmada' ? 'Completar acta de entrega' : 'Completar acta de devolución'}
+                variant="secondary"
+                icon="clipboard-outline"
+                onPress={() =>
+                  router.push({
+                    pathname: '/handover',
+                    params: { booking: b.id, kind: b.status === 'confirmada' ? 'entrega' : 'devolucion' },
+                  })
+                }
+              />
+            ) : null}
+          </View>
+        </>
+      ) : null}
+
       <SectionHeader title="Historial" />
       <View style={{ gap: space.sm }}>
         {events.map((e) => (
@@ -415,5 +485,6 @@ const styles = StyleSheet.create({
   flowStep: { flex: 1, height: 4, borderRadius: 2 },
   personRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   event: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  handoverPhoto: { width: 96, height: 96, borderRadius: radius.md },
   eventDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent, marginTop: 6 },
 });

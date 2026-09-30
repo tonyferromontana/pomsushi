@@ -9,6 +9,7 @@
 - El archivo `store` (componente web de pedidos de sushi, ajeno a RUÉ) se conserva sin tocar. No borrarlo sin autorización.
 - **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Mercado Pago, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
 - Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
+- **Términos y Condiciones oficiales = documento del dueño** (`legal/fuente/Terminos_y_condiciones_arriendo_vehiculos.docx`, versión 2026-09-30), convertido a `legal/terminos.md`. Sus notas internas están en `legal/notas-internas.md` (no se publican). La app se alineó con él en la migración 0005.
 - Como no existía "Rueda", se usa la marca y la paleta **RUÉ desde el inicio** (no hay rebranding pendiente de nombres internos). Bundle ID provisorio: `cl.rue.app`.
 
 ## 1. Qué es RUÉ
@@ -45,6 +46,8 @@ src/
     verify.tsx               # Subir licencia / cédula (bucket privado documents)
     payout.tsx               # Datos bancarios del propietario
     legal/[doc].tsx          # Términos / Privacidad (accesible sin sesión)
+    vehicle-verify.tsx       # Acreditar dominio: Certificado de Anotaciones Vigentes + padrón (cláusula 4)
+    handover.tsx             # Acta de entrega / devolución: km, combustible, observaciones, fotos (cláusula 11)
   components/
     ui.tsx                   # Primitivas: Text, Wordmark, Screen, Button, IconButton, Input, FieldButton,
                              # Chip, Segmented, Card, Divider, SectionHeader, Row, Badge, Price, Avatar,
@@ -67,6 +70,8 @@ src/
   legal/generated.ts         # GENERADO por scripts/build-legal.mjs (no editar)
   theme.ts                   # Tokens de diseño (única fuente)
 legal/                       # FUENTE de Términos y Privacidad (.md) + datos de contacto (sitio.json)
+legal/fuente/                # .docx original de los Términos entregado por el dueño
+legal/notas-internas.md      # Notas de implementación del modelo de Términos (NO publicar)
 docs/                        # Sitio web (GitHub Pages): inicio, términos, privacidad, soporte, eliminar cuenta (GENERADO)
 scripts/build-legal.mjs      # npm run legal → regenera src/legal/generated.ts y docs/
 supabase/
@@ -74,6 +79,7 @@ supabase/
   migrations/0002_booking_engine.sql
   migrations/0003_trust_safety_legal.sql   # legal, verificación, reseñas, reportes, bloqueos, avisos, pagos a dueños, borrar cuenta
   migrations/0004_payments_cron_push.sql   # pagos no aprobados, pg_cron (vencimientos), pg_net → push
+  migrations/0005_terms_compliance.sql     # cumplimiento de Términos: dominio del vehículo, casillas, actas, bitácora de datos
   functions/                 # Edge Functions (Deno): mp-create-preference, mp-webhook, mp-return, push-dispatch, delete-account
   functions/_shared/         # http, supabase (admin/usuario), mercadopago (firma, API), redirect (+ pruebas)
   config.toml                # verify_jwt por función
@@ -81,6 +87,7 @@ supabase/
   tests/supabase_stub.sql    # Imitación mínima de auth/storage/roles de Supabase (solo pruebas)
   tests/booking_flow.test.sql
   tests/trust_safety.test.sql
+  tests/terms_compliance.test.sql
 eas.json                     # Perfiles de build: preview (APK interno) y production (tiendas)
 .github/workflows/ci.yml     # CI: legal al día, tsc, lint, pruebas de BD y de Edge Functions
 LANZAMIENTO.md               # Lista de tareas del dueño para lanzar
@@ -117,6 +124,14 @@ assets/images/               # icon, splash, android foreground, favicon (PROVIS
 Tablas de 0003/0004: `admins` (solo servidor), `legal_acceptances` (versión aceptada), `verification_requests` (licencia/cédula; aprueba un admin con `review_verification`), `reviews` (una por persona y reserva finalizada, vía `submit_review`), `reports` y `user_blocks` (exigidos por App Store), `notifications` (creadas por triggers; el usuario solo marca `read_at`), `push_tokens`, `payout_accounts` (banco, privado), `payouts` (se crea al finalizar una reserva pagada; admin marca pagado).
 RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, `user_reputation`, `my_bookings`, `booking_vehicle`, `is_admin`, `is_blocked_with`. Solo servidor: `delete_account_data`, `record_payment_status`, `review_verification` (admin o service_role).
 `request_booking` y `search_vehicles` fueron reemplazadas en 0003 (bloqueos + licencia obligatoria configurable `require_verified_license`).
+
+0005 (Términos 2026-09-30):
+- `vehicles`: + `plate`, `km_per_day` (null = libre), `pickup_location` (referencia, nunca dirección exacta), `fuel_policy` (`mismo_nivel`/`lleno`), `insurance_info`, `verified_until`.
+- `vehicle_verifications`: Certificado de Anotaciones Vigentes (≤ `cav_max_age_days`=30 al cargarlo) + padrón en bucket `documents`. Admin aprueba con `review_vehicle_verification` → `verified=true`, `verified_until = hoy + 6 meses`. Cambiar patente/marca/modelo/año quita la verificación (trigger). Cron diario `expire_vehicle_verifications` (7:15) quita vencidas, pausa (si la exigencia está activa) y avisa.
+- `require_vehicle_verification` (false por defecto; **true al lanzar**): trigger impide `publicado` sin verificación vigente; `search_vehicles` y `request_booking` la respetan.
+- `booking_consents`: casilla A (términos, obligatoria) y C (comunicar datos al arrendador, separada y opcional) por reserva, con versión. **`request_booking` cambió de firma**: `(vehicle, start, end, purpose, message, p_terms_version, p_accept_terms, p_accept_data_sharing)`; exige `p_accept_terms` y la versión vigente.
+- `booking_handovers` + bucket privado `handovers` (`<booking_id>/…`, solo participantes y admin), vía `submit_handover`. `transition_booking` exige acta de **entrega** para `en_curso` y de **devolución** para `devuelta`.
+- `data_disclosures`: bitácora (solo admin escribe) de cada comunicación de datos a arrendador/abogado/autoridad; el titular ve las suyas.
 
 - `vehicle_type`: car, motorcycle, suv, pickup, van, cargo_van, truck, minibus, trailer, special. Atributos por tipo en `attributes` (jsonb) validados por `validate_vehicle_attributes()` (claves permitidas y rangos). El formulario por tipo está en `ATTRIBUTE_FIELDS` (`src/lib/catalog.ts`). Para un atributo nuevo: agregar la clave en una **migración nueva** (reemplazando la función) y en `catalog.ts`.
 - Storage: `vehicle-photos` (lectura pública; cada usuario escribe solo en `<uid>/…`), `documents` (privado; solo `<uid>/…`).
@@ -234,7 +249,13 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | CI GitHub Actions | ✅ |
 | Chat | ✅ (sin "leído") |
 | Bloqueo de fechas por el propietario (UI) | ⏳ backlog (tabla lista) |
-| Documentos del vehículo (verificación) | ⏳ backlog (hoy: declaración jurada) |
+| Verificación de dominio del vehículo (CAV + padrón, 6 meses) | ✅ (activar `require_vehicle_verification` al lanzar) |
+| Actas de entrega y devolución con fotos | ✅ |
+| Casillas A/C por reserva + bitácora de datos | ✅ |
+| Garantía con preautorización de tarjeta (cláusulas 8–10) | ⏳ decisión: Checkout Pro no preautoriza (ver LANZAMIENTO.md) |
+| Horas exactas de entrega/devolución (cláusula 6) | ⏳ decisión del dueño (hoy: días completos) |
+| Personas jurídicas como arrendador (cláusula 3–4) | ⏳ backlog |
+| Conductores adicionales (cláusula 5) | ⏳ backlog (hoy: solo el arrendatario conduce) |
 | Mapa, analytics | ⏳ decisión del dueño |
 | Logo definitivo | ⏳ archivos del dueño |
 
@@ -244,6 +265,9 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 |---|---|
 | Crítico (negocio) | Seguros: no hay cobertura definida para daños durante el arriendo. No lanzar al público sin resolverlo. |
 | Importante | Comisión y cargo de servicio en 0 %: definir antes de cobrar. |
+| Importante | Alcance: los Términos del dueño cubren solo **autos y motocicletas** (licencias B y C); la app permite más tipos. Decisión pendiente del dueño/abogado. |
+| Importante | Garantía por preautorización exigida por los Términos no es posible con Checkout Pro; requiere Checkout API o depósito. Decisión pendiente. |
+| Importante | Derecho de retracto (10 días, cláusula 20) y política de cancelación no implementados en la app (cancelación de reservas pagadas es manual). |
 | Importante | Política de cancelación con reembolso no definida: `confirmada → cancelada` no se ofrece en la app; reembolsos manuales en MP (OPERACION.md). |
 | Importante | Garantía: se muestra como "se coordina con el propietario"; no se cobra por la app. |
 | Importante | Pagos a propietarios manuales (transferencia + marcar en SQL). Evaluar Mercado Pago Marketplace (split) cuando haya volumen. |

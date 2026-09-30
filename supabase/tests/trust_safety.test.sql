@@ -37,7 +37,7 @@ select pg_temp.as_user('20000000-0000-0000-0000-00000000000b');
 set role authenticated;
 do $$ begin
   begin
-    perform public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl() + 1, public.today_cl() + 3);
+    perform public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl() + 1, public.today_cl() + 3, p_terms_version => '2026-09-30', p_accept_terms => true);
     raise exception 'FALLA: permitió arrendar sin licencia verificada';
   exception when raise_exception then
     if sqlerrm like 'FALLA%' then raise; end if;
@@ -64,7 +64,7 @@ reset role;
 -- ------------------------------------------------ Reserva completa con avisos y pago rechazado
 select pg_temp.as_user('20000000-0000-0000-0000-00000000000b');
 set role authenticated;
-select set_config('rue.t2', public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2)::text, false);
+select set_config('rue.t2', public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2, p_terms_version => '2026-09-30', p_accept_terms => true)::text, false);
 reset role;
 
 do $$ begin
@@ -119,7 +119,9 @@ begin
   exception when raise_exception then
     if sqlerrm like 'FALLA%' then raise; end if;
   end;
+  perform public.submit_handover(bid, 'entrega', 1000, 100, 'ok', '{}');
   perform public.transition_booking(bid, 'en_curso');
+  perform public.submit_handover(bid, 'devolucion', 1300, 90, 'ok', '{}');
   perform public.transition_booking(bid, 'devuelta');
   perform public.transition_booking(bid, 'finalizada');
   perform public.submit_review(bid, 5, 'Excelente arrendatario');

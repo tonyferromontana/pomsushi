@@ -20,13 +20,22 @@ Los precios son aproximados; confírmalos en cada sitio antes de pagar.
   - Garantía: si se cobra por la app o se coordina en persona.
   - Edad mínima y antigüedad de licencia para arrendar.
 - [ ] **Seguros.** Conversa con una corredora de seguros sobre un seguro para arriendo entre particulares. Es **el riesgo más grande del negocio**: un choque sin cobertura puede quebrar a un propietario o a RUÉ. No lances al público sin tener esto claro.
-- [ ] **Abogado.** Llévale `legal/terminos.md` y `legal/privacidad.md` (borradores escritos por Claude). Pídele que:
-  - Complete todo lo que está `[ENTRE CORCHETES]`.
-  - Valide el rol de RUÉ como intermediario.
-  - Revise la responsabilidad por daños y multas.
+- [x] **Términos y Condiciones:** tu documento (`legal/fuente/…docx`) ya es el texto oficial de la app y del sitio (`legal/terminos.md`). Las notas internas del modelo quedaron en `legal/notas-internas.md` (no se publican).
+- [ ] **Abogado.** Llévale `legal/terminos.md` y `legal/privacidad.md`. Pídele que:
+  - Complete lo que está `[ENTRE CORCHETES]`: razón social, RUT, domicilio, canales, plazos de reclamo, descargos y liquidación, porcentaje y base de la comisión, garantía y plazos de conservación de datos.
+  - Confirme si la **casilla C** (comunicar datos al arrendador) puede ser obligatoria para reservar. Hoy es opcional y queda registrada.
+  - Revise el **derecho de retracto** (10 días) y la política de cancelación.
+  - Revise la aplicación del **artículo 43 de la Ley 19.496** al modelo.
   - Revise la parte tributaria: IVA de la comisión y quién emite boleta o factura.
-  - Te dé un modelo de contrato o acta de entrega entre las partes.
   - Cuando esté listo, mándale los textos finales a Claude.
+- [ ] **Decidir el alcance: ¿solo autos y motos, o todos los tipos de vehículo?** Tus Términos hablan de "autos y motocicletas" (licencias B y C), pero la app hoy permite publicar camionetas, vans, furgones, camiones y más. O el abogado amplía los Términos, o Claude limita la app a autos y motos.
+- [ ] **Garantía con tarjeta de crédito (cláusulas 8 a 10).** Tus Términos piden bloquear un monto en la tarjeta (preautorización) y cobrarlo solo si hay daños acreditados. **Checkout Pro de Mercado Pago no permite preautorizar.** Opciones:
+  1. Pasar a la integración "Checkout API" de Mercado Pago (formulario de tarjeta dentro de la app, con captura diferida). Hay que confirmar con Mercado Pago que lo habilitan para esta actividad y cuántos días dura el bloqueo, que suele ser menor que un arriendo mensual.
+  2. Cobrar la garantía como un depósito aparte y devolverlo al terminar.
+  3. Por ahora, sin garantía por la app (lo que hay hoy: "se coordina con el propietario").
+
+  Decide con el abogado y avísale a Claude.
+- [ ] **Horas de entrega y devolución.** La cláusula 6 pide "fechas y horas exactas". Hoy la reserva es por días completos. Confirma si quieres que Claude agregue la elección de hora.
 - [ ] **Marca y dominio.**
   - Revisa si `rue.cl` está disponible en https://www.nic.cl (aprox. $10.000 al año).
   - Evalúa registrar la marca "RUÉ" en https://www.inapi.cl (clases 39, 9 y 42).
@@ -96,7 +105,7 @@ Hay dos caminos:
 - [ ] **Cambia a producción:**
   - Credenciales de producción de Mercado Pago (Claude cambia `MP_ENVIRONMENT=prod`).
   - Vuelve a prender "Confirm email".
-  - Activa `require_verified_license` (ver `OPERACION.md`).
+  - Activa `require_verified_license` y `require_vehicle_verification` (ver `OPERACION.md`). Tus Términos exigen ambas.
 
 ## Fase 6 · Lanzamiento
 
