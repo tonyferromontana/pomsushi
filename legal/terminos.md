@@ -74,7 +74,7 @@ No podrán aplicarse cargos por conceptos o tarifas que no hayan sido informados
 
 Para confirmar una reserva, el arrendatario deberá ingresar una tarjeta de crédito vigente de la cual sea titular y autorizar una garantía por el monto exacto mostrado antes de contratar. El ingreso o almacenamiento de una tarjeta no constituye, por sí solo, una garantía efectiva ni acredita fondos disponibles.
 
-La garantía se constituirá mediante preautorización o bloqueo de cupo por [MONTO O CRITERIO DE GARANTÍA], procesado por [PROVEEDOR DE PAGOS], y deberá aprobarse antes de la entrega. Si se utiliza un depósito efectivamente cobrado, esta modalidad deberá informarse de manera separada, indicando monto, custodio y condiciones de restitución; no se presentará como un simple bloqueo.
+La garantía se constituirá mediante preautorización o bloqueo de cupo por [MONTO O CRITERIO DE GARANTÍA], procesado por Transbank (Webpay), y deberá aprobarse antes de la entrega. Si se utiliza un depósito efectivamente cobrado, esta modalidad deberá informarse de manera separada, indicando monto, custodio y condiciones de restitución; no se presentará como un simple bloqueo.
 
 La autorización se limita a la reserva identificada, al monto informado y a los conceptos previstos en estos términos. No constituye un mandato para realizar cargos ilimitados, disponer de otros fondos ni cobrar automáticamente cualquier suma indicada por el arrendador. La Operadora no solicitará claves bancarias ni entregará al arrendador el número completo de tarjeta o código de seguridad. El tratamiento de datos de pago se efectuará por el proveedor habilitado, conforme al flujo informado.
 
@@ -216,7 +216,7 @@ He leído y acepto los términos y condiciones de RUÉ, versión 2026-10-01, y l
 
 **Casilla B · Autorización de garantía**
 
-Autorizo a [RAZÓN SOCIAL], a través de [PROVEEDOR DE PAGOS], a constituir una garantía mediante [PREAUTORIZACIÓN O DEPÓSITO] por [MONTO EXACTO] para la reserva [IDENTIFICADOR]. Conozco su vigencia, procedimiento de renovación y liberación, conceptos cubiertos y mecanismo de reclamo. Cualquier aplicación se sujetará a las cláusulas 8 a 10; no autorizo cargos ilimitados ni cobros por obligaciones controvertidas sin fundamento válido. Autorizo asimismo la transferencia al arrendador de la parte procedente de la garantía, con liquidación a ambas partes, conforme a la cláusula 10.
+Autorizo a [RAZÓN SOCIAL], a través de Transbank (Webpay), a constituir una garantía mediante [PREAUTORIZACIÓN O DEPÓSITO] por [MONTO EXACTO] para la reserva [IDENTIFICADOR]. Conozco su vigencia, procedimiento de renovación y liberación, conceptos cubiertos y mecanismo de reclamo. Cualquier aplicación se sujetará a las cláusulas 8 a 10; no autorizo cargos ilimitados ni cobros por obligaciones controvertidas sin fundamento válido. Autorizo asimismo la transferencia al arrendador de la parte procedente de la garantía, con liquidación a ambas partes, conforme a la cláusula 10.
 
 **Casilla C · Comunicación de datos para gestionar incidentes y ejercer acciones**
 

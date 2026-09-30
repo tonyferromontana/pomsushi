@@ -7,9 +7,9 @@
 
 - El repo `tonyferromontana/pomsushi` no tenía código de Rueda. RUÉ se construyó **desde cero** en esta sesión (el dueño lo pidió explícitamente).
 - El archivo `store` (componente web de pedidos de sushi, ajeno a RUÉ) se conserva sin tocar. No borrarlo sin autorización.
-- **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Mercado Pago, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
+- **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Transbank, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
 - Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
-- **Decisiones del dueño (2026-10-01):** todos los tipos de vehículo; precio por días + el arrendador propone hora de entrega y devolución al aceptar; casilla C obligatoria. Pendientes: garantía por preautorización (esperando respuestas de Mercado Pago, ver LANZAMIENTO.md) y retracto (a/b con abogado).
+- **Decisiones del dueño (2026-10-01):** todos los tipos de vehículo; precio por días + el arrendador propone hora de entrega y devolución al aceptar; casilla C obligatoria. Pagos: **solo Webpay**, con cuotas. Pendientes: garantía (captura diferida u Oneclick de Transbank, esperando respuestas de Transbank, ver LANZAMIENTO.md) y retracto (a/b con abogado).
 - **Términos y Condiciones oficiales = documento del dueño** (`legal/fuente/Terminos_y_condiciones_arriendo_vehiculos.docx`, versión 2026-09-30), convertido a `legal/terminos.md`. Sus notas internas están en `legal/notas-internas.md` (no se publican). La app se alineó con él en la migración 0005.
 - Como no existía "Rueda", se usa la marca y la paleta **RUÉ desde el inicio** (no hay rebranding pendiente de nombres internos). Bundle ID provisorio: `cl.rue.app`.
 
@@ -23,7 +23,7 @@
 
 ## 2. Stack
 
-Expo SDK 57 (expo 57.0.26, React Native 0.86, React 19.2) · Expo Router 57 (rutas en `src/app/`) · TypeScript strict · Supabase (Postgres + RLS, Auth email/contraseña, Storage, Realtime) · Mercado Pago Checkout Pro (Etapa 4, aún no implementado).
+Expo SDK 57 (expo 57.0.26, React Native 0.86, React 19.2) · Expo Router 57 (rutas en `src/app/`) · TypeScript strict · Supabase (Postgres + RLS, Auth email/contraseña, Storage, Realtime) · Transbank Webpay Plus (pagos, con cuotas).
 
 Dependencias agregadas (todas funcionan en Expo Go): `@supabase/supabase-js`, `@react-native-async-storage/async-storage` (sesión), `@expo-google-fonts/bricolage-grotesque`, `@expo-google-fonts/dm-sans`, `@react-native-community/datetimepicker`, `expo-image-picker`, `expo-image-manipulator` (compresión de fotos), `@expo/vector-icons`, `expo-notifications` + `expo-device` (push; en Android el push remoto requiere build de EAS, no Expo Go). Sin mapas ni analytics todavía (decisión pendiente con el dueño).
 
@@ -81,15 +81,17 @@ supabase/
   migrations/0003_trust_safety_legal.sql   # legal, verificación, reseñas, reportes, bloqueos, avisos, pagos a dueños, borrar cuenta
   migrations/0004_payments_cron_push.sql   # pagos no aprobados, pg_cron (vencimientos), pg_net → push
   migrations/0005_terms_compliance.sql     # cumplimiento de Términos: dominio del vehículo, casillas, actas, bitácora de datos
+  migrations/0007_webpay.sql              # pagos Webpay: buy_order, cuotas, tipo de pago, proveedor en confirm/record
   migrations/0006_owner_times_mandatory_consent.sql  # horas propuestas por el arrendador (accept_booking), casilla C obligatoria, Términos 2026-10-01
-  functions/                 # Edge Functions (Deno): mp-create-preference, mp-webhook, mp-return, push-dispatch, delete-account
-  functions/_shared/         # http, supabase (admin/usuario), mercadopago (firma, API), redirect (+ pruebas)
+  functions/                 # Edge Functions (Deno): webpay-create, webpay-return, push-dispatch, delete-account
+  functions/_shared/         # http, supabase (admin/usuario), webpay (API Transbank), redirect (+ pruebas)
   config.toml                # verify_jwt por función
   tests/run.sh               # Levanta Postgres temporal, aplica migraciones y corre todos los *.test.sql
   tests/supabase_stub.sql    # Imitación mínima de auth/storage/roles de Supabase (solo pruebas)
   tests/booking_flow.test.sql
   tests/trust_safety.test.sql
   tests/terms_compliance.test.sql
+  tests/webpay.test.sql
 eas.json                     # Perfiles de build: preview (APK interno) y production (tiendas)
 .github/workflows/ci.yml     # CI: legal al día, tsc, lint, pruebas de BD y de Edge Functions
 LANZAMIENTO.md               # Lista de tareas del dueño para lanzar
@@ -120,7 +122,7 @@ assets/images/               # icon, splash, android foreground, favicon (PROVIS
 | `booking_events` | historial de estados (auditoría automática) | lectura: participantes |
 | `messages` | chat por reserva, hora del servidor | participantes; se escribe solo como uno mismo |
 | `payments` | pagos (sin datos de tarjeta), único por `provider_payment_id` | lectura: participantes; escribe solo servidor |
-| `payment_events` | webhooks crudos, idempotencia | solo servidor |
+| `payment_events` | eventos de pago (commit Webpay) sin datos de tarjeta | solo servidor |
 | `platform_settings` | comisiones y plazos configurables | solo servidor |
 
 Tablas de 0003/0004: `admins` (solo servidor), `legal_acceptances` (versión aceptada), `verification_requests` (licencia/cédula; aprueba un admin con `review_verification`), `reviews` (una por persona y reserva finalizada, vía `submit_review`), `reports` y `user_blocks` (exigidos por App Store), `notifications` (creadas por triggers; el usuario solo marca `read_at`), `push_tokens`, `payout_accounts` (banco, privado), `payouts` (se crea al finalizar una reserva pagada; admin marca pagado).
@@ -156,7 +158,7 @@ solicitada → aceptada → confirmada → en_curso → devuelta → finalizada
 | solicitada | aceptada / rechazada | propietario (al aceptar, las otras solicitudes cruzadas pasan a rechazada) |
 | solicitada | cancelada | arrendatario |
 | solicitada / aceptada | vencida | servidor (`expire_stale_bookings`, cron) |
-| aceptada | confirmada | **solo** `confirm_booking_payment` (webhook MP, service_role) |
+| aceptada | confirmada | **solo** `confirm_booking_payment` (commit Webpay, service_role) |
 | aceptada | cancelada | cualquiera de los dos |
 | confirmada | en_curso | propietario, desde la fecha de inicio (hora Chile) |
 | confirmada | cancelada | permitido en el grafo, **no expuesto a la app** (requiere política de reembolso) |
@@ -171,10 +173,11 @@ solicitada → aceptada → confirmada → en_curso → devuelta → finalizada
 - `expire_stale_bookings()` corre cada 10 minutos con pg_cron (0004).
 - Avisos: triggers `notify_booking_change` / `notify_new_message` (máx. 1 aviso de mensajes cada 10 min por reserva) → `notifications` → trigger `dispatch_push` (pg_net) → Edge Function `push-dispatch` (Expo Push). Requiere `platform_settings.supabase_url`.
 
-**Pagos (Mercado Pago Checkout Pro)**
-1. App → `mp-create-preference` (JWT): valida que sea el arrendatario, reserva `aceptada` y no vencida; monto = `bookings.total_clp`; reutiliza la preferencia guardada en `payments.checkout_url`.
-2. App abre el link con `WebBrowser.openAuthSessionAsync`; al volver, `mp-return` redirige a `rue://pago` (o `exp://` en Expo Go). **Volver no confirma nada.**
-3. `mp-webhook` (sin JWT): verifica `x-signature` (HMAC con `MP_WEBHOOK_SECRET`), guarda `payment_events` (idempotencia), consulta `GET /v1/payments/{id}`, valida ambiente/moneda, y llama `confirm_booking_payment` (aprobado) o `record_payment_status` (resto). Responde 500 ante errores para que MP reintente.
+**Pagos (Webpay Plus, Transbank)** — decisión del dueño 2026-10-01: solo Webpay (Mercado Pago eliminado; queda en el historial de git).
+1. App → `webpay-create` (JWT): valida arrendatario, reserva `aceptada` y no vencida; monto = `bookings.total_clp`; crea transacción (`buy_order` ≤ 26 caracteres, `session_id` = id de reserva) y guarda `payments` (`preference_id` = token, `status` = created).
+2. App abre `url?token_ws=token` con `WebBrowser.openAuthSessionAsync`. En el formulario de Webpay la persona elige crédito (con **cuotas**, según contrato del comercio y banco), débito o prepago.
+3. Transbank vuelve a `webpay-return` (sin JWT; GET o POST, `token_ws` o `TBK_TOKEN` si anuló). El **servidor hace commit** con Transbank (si falla, consulta estado), valida `AUTHORIZED` + `response_code = 0` + monto + orden, y llama `confirm_booking_payment(..., 'webpay')`. Si la reserva ya no era pagable, el monto no calza o es un **pago doble**, **anula automáticamente** (refund) y registra `refunded`. Guarda `payment_type` e `installments`. Redirige a `rue://pago?status=approved|rejected|cancelled|refunded|error`.
+4. No hay webhook: sin commit, Transbank reversa sola la transacción. Ambiente `test` usa credenciales públicas de integración si no hay `TBK_COMMERCE_CODE`/`TBK_API_KEY`.
 
 ## 7. Reglas inviolables
 
@@ -182,7 +185,7 @@ solicitada → aceptada → confirmada → en_curso → devuelta → finalizada
 2. Comisiones configurables en `platform_settings`. Nunca inventar porcentajes.
 3. RLS en toda tabla nueva. Datos sensibles (RUT, teléfono, dirección, licencia, cédula, documentos, banco, info financiera) nunca públicos. Storage con policies.
 4. Migraciones: siempre un archivo **nuevo** (`0003_…`). No editar 0001/0002 una vez aplicadas en Supabase. Correr `npm run test:db` y agregar pruebas al cambiar el esquema.
-5. Pagos: preferencia creada en backend, confirmación solo por webhook verificado + consulta a la API de MP, idempotencia, test/prod separados, nunca datos de tarjeta.
+5. Pagos: transacción creada en backend; confirmación solo por commit servidor-a-servidor con Transbank (validar estado, código, monto y orden); idempotencia; anulación automática de pagos no correspondientes; test/prod separados; nunca datos de tarjeta.
 6. Secretos: en la app solo `EXPO_PUBLIC_*`. Service role, token de MP y secretos de webhook solo como secrets de Edge Functions.
 7. Garantías, vencimientos y notificaciones corren en el servidor (cron), nunca dependen de abrir la app.
 8. Nada de `catch {}` silencioso: `logError()` en la app, logs sin secretos en el backend.
@@ -212,20 +215,20 @@ App (`.env`, ver `.env.example`, nunca se sube a git):
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` (anon `eyJ…` o publishable `sb_publishable_…`)
 
-Servidor (secrets de Edge Functions, `supabase secrets set`): `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_ENVIRONMENT` (`test`/`prod`). `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase.
+Servidor (secrets de Edge Functions, `supabase secrets set`): `TBK_ENVIRONMENT` (`test`/`prod`), `TBK_COMMERCE_CODE`, `TBK_API_KEY` (solo producción). `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase.
 
 Base de datos (`platform_settings`, ver OPERACION.md): `supabase_url` (activa push), `internal_webhook_secret` (se genera solo), comisiones, plazos, `terms_version`, `require_verified_license`.
 
 App: `extra.eas.projectId` en app.json lo crea `eas init` (sin él no hay token push; la bandeja igual funciona).
 
-Acceso para que Claude despliegue (opcional, ver LANZAMIENTO.md Fase 3): variables `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `EXPO_TOKEN`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` y red a supabase.com, *.supabase.co, expo.dev, api.expo.dev, exp.host, api.mercadopago.com.
+Acceso para que Claude despliegue (opcional, ver LANZAMIENTO.md Fase 3): variables `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `EXPO_TOKEN`, `TBK_COMMERCE_CODE`, `TBK_API_KEY` y red a supabase.com, *.supabase.co, expo.dev, api.expo.dev, exp.host, webpay3gint.transbank.cl, webpay3g.transbank.cl.
 
 Despliegue (Supabase CLI):
 ```bash
 npx supabase link --project-ref $SUPABASE_PROJECT_REF
 npx supabase db push                          # aplica migraciones pendientes
-npx supabase functions deploy mp-create-preference mp-webhook mp-return push-dispatch delete-account
-npx supabase secrets set MP_ACCESS_TOKEN=... MP_WEBHOOK_SECRET=... MP_ENVIRONMENT=test
+npx supabase functions deploy webpay-create webpay-return push-dispatch delete-account
+npx supabase secrets set TBK_ENVIRONMENT=test          # prod: + TBK_COMMERCE_CODE=... TBK_API_KEY=...
 ```
 Builds (EAS): `npx eas-cli init` (crea projectId), `npx eas-cli build --profile preview|production --platform all`, `npx eas-cli submit --platform ios|android`.
 
@@ -240,7 +243,7 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Explorar, ficha, cotización, solicitud | ✅ |
 | Publicar / editar / pausar + declaración de papeles | ✅ |
 | Reservas por rol + historial + realtime | ✅ |
-| Pago Mercado Pago (preferencia, retorno, webhook firmado, idempotencia) | ✅ código + pruebas de firma; ⏳ probar con credenciales de prueba reales |
+| Pago Webpay (crear, commit en servidor, cuotas, anulación automática, pago doble) | ✅ código + pruebas; ⏳ probar en integración de Transbank (desde el celular del dueño) |
 | Avisos en la app + push | ✅ bandeja; ⏳ push requiere `supabase_url`, `eas init` y build EAS |
 | Verificación de licencia/cédula (revisión manual de admin) | ✅ |
 | Reseñas y reputación real | ✅ |
@@ -255,7 +258,7 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Verificación de dominio del vehículo (CAV + padrón, 6 meses) | ✅ (activar `require_vehicle_verification` al lanzar) |
 | Actas de entrega y devolución con fotos | ✅ |
 | Casillas A/C por reserva + bitácora de datos | ✅ |
-| Garantía con preautorización de tarjeta (cláusulas 8–10) | ⏳ decisión: Checkout Pro no preautoriza (ver LANZAMIENTO.md) |
+| Garantía con tarjeta de crédito (cláusulas 8–10) | ⏳ captura diferida u Oneclick de Transbank; esperando respuestas de Transbank |
 | Horas de entrega/devolución propuestas por el arrendador (cláusula 6) | ✅ precio por días |
 | Personas jurídicas como arrendador (cláusula 3–4) | ⏳ backlog |
 | Conductores adicionales (cláusula 5) | ⏳ backlog (hoy: solo el arrendatario conduce) |
@@ -269,13 +272,13 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Crítico (negocio) | Seguros: no hay cobertura definida para daños durante el arriendo. No lanzar al público sin resolverlo. |
 | Importante | Comisión y cargo de servicio en 0 %: definir antes de cobrar. |
 | Importante | Términos ampliados por Claude a todos los tipos de vehículo (decisión del dueño): falta revisión del abogado. |
-| Importante | Garantía por preautorización exigida por los Términos no es posible con Checkout Pro; requiere Checkout API o depósito. Decisión pendiente. |
+| Importante | Garantía por bloqueo de cupo (Términos 8–10) pendiente: Webpay captura diferida (plazo de captura limitado) u Oneclick. |
 | Importante | Derecho de retracto (10 días, cláusula 20) y política de cancelación no implementados en la app (cancelación de reservas pagadas es manual). Esperando decisión (a) dar retracto o (b) excluirlo con aviso. |
 | Importante | Casilla C obligatoria: el propio modelo de Términos advierte no condicionar el servicio a consentimientos innecesarios; validar con abogado. |
-| Importante | Política de cancelación con reembolso no definida: `confirmada → cancelada` no se ofrece en la app; reembolsos manuales en MP (OPERACION.md). |
+| Importante | Política de cancelación con reembolso no definida: `confirmada → cancelada` no se ofrece en la app; reembolsos manuales en el Portal de Transbank (OPERACION.md). |
 | Importante | Garantía: se muestra como "se coordina con el propietario"; no se cobra por la app. |
-| Importante | Pagos a propietarios manuales (transferencia + marcar en SQL). Evaluar Mercado Pago Marketplace (split) cuando haya volumen. |
-| Importante | Webhook de MP no probado contra la API real desde este entorno (proxy bloquea MP). Probar en Fase 4. |
+| Importante | Pagos a propietarios manuales (transferencia + marcar en SQL). Webpay no reparte pagos a terceros. |
+| Importante | Webpay no probado contra Transbank real desde este entorno (proxy bloquea transbank.cl). El método de redirección GET `url?token_ws=` y el retorno GET/POST deben verificarse en integración. |
 | Mejora | Al guardar fotos se borran y reinsertan las filas de `vehicle_photos`; pasar a RPC transaccional. |
 | Mejora | Al eliminar cuenta, las fotos de vehículos borrados quedan en Storage (no son datos personales). Limpiar con tarea periódica. |
 | Mejora | `messages.read_at` no se actualiza (sin "leído"). |
@@ -288,7 +291,7 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 1. RUÉ corriendo en el celular con Expo Go — ✅ código; ⏳ Supabase + `.env` del dueño
 2. Rebranding — ✅ (se partió como RUÉ); ⏳ logo/íconos definitivos
 3. Arquitectura multimodal — ✅ `vehicle_type` + `attributes`
-4. Mercado Pago — ✅ código y pruebas; ⏳ desplegar + credenciales de prueba
+4. Pagos Webpay — ✅ código y pruebas; ⏳ desplegar y probar en integración; afiliación Transbank del dueño
 5. Reserva completa con dos cuentas — ⏳ prueba manual del dueño (Fase 4 de LANZAMIENTO.md)
 6. Cron y notificaciones — ✅; garantías ⏳ decisión de negocio
 7. Calidad — ✅ tsc, lint, CI, pruebas de BD y funciones

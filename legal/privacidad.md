@@ -16,7 +16,7 @@ En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolec
 - **Documentos de verificación:** fotos de tu cédula de identidad y licencia de conducir; si eres arrendador, el Certificado de Anotaciones Vigentes y el padrón de tu vehículo.
 - **Actas de entrega y devolución:** kilometraje, combustible, observaciones y fotos del vehículo, visibles solo para las partes de la reserva.
 - **Vehículos:** datos, fotos, ubicación referencial (ciudad y comuna) y precios de lo que publiques.
-- **Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Mercado Pago; RUÉ nunca los recibe ni los guarda.
+- **Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Transbank a través de Webpay; RUÉ nunca los recibe ni los guarda. Solo guardamos el tipo de pago (crédito, débito o prepago) y el número de cuotas.
 - **Datos bancarios:** si eres Propietario, la cuenta donde te transferimos.
 - **Mensajes y reseñas** que envíes dentro de la app.
 - **Datos técnicos:** tipo de dispositivo, token para enviarte notificaciones y registros de uso necesarios para que el servicio funcione y sea seguro.
@@ -41,7 +41,7 @@ Tratamos tus datos porque son necesarios para cumplir el contrato que celebras c
 
 - **La otra parte de tu reserva:** tu nombre visible, foto, reputación y lo necesario para coordinar la entrega. Tu RUT, teléfono, documentos y datos bancarios no se muestran a otros usuarios.
 - **El arrendador y su abogado, solo ante un incidente:** según la autorización que otorgas al reservar (casilla C de los Términos, requisito para reservar), y solo si existen antecedentes verificables de daños, accidente, falta de restitución, uso indebido u otros hechos relacionados con esa reserva, podemos comunicar al arrendador afectado y a su abogado acreditado tu nombre completo, RUT, domicilio declarado, correo, teléfono y los antecedentes de esa reserva, solo para gestionar el reclamo o ejercer acciones legales. Cada comunicación queda registrada (destinatario, fecha, datos y motivo) y te avisamos, salvo que la ley lo impida. Nunca entregamos datos bancarios, claves, biometría ni información de otras reservas, y la copia de tu cédula o licencia solo si es específicamente necesaria. Las mismas reglas aplican cuando el arrendatario necesita datos del arrendador para ejercer sus derechos.
-- **Mercado Pago:** para procesar los pagos.
+- **Transbank (Webpay):** para procesar los pagos con tarjeta.
 - **Proveedores tecnológicos** que nos prestan servicios bajo contrato y confidencialidad: Supabase (base de datos y almacenamiento, con servidores en Brasil) y Expo (envío de notificaciones). Esto implica una transferencia internacional de datos, que realizamos con resguardos adecuados.
 - **Autoridades**, cuando la ley o una orden judicial lo exija.
 

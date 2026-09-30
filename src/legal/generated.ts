@@ -158,7 +158,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "La garantía se constituirá mediante preautorización o bloqueo de cupo por [MONTO O CRITERIO DE GARANTÍA], procesado por [PROVEEDOR DE PAGOS], y deberá aprobarse antes de la entrega. Si se utiliza un depósito efectivamente cobrado, esta modalidad deberá informarse de manera separada, indicando monto, custodio y condiciones de restitución; no se presentará como un simple bloqueo."
+      "text": "La garantía se constituirá mediante preautorización o bloqueo de cupo por [MONTO O CRITERIO DE GARANTÍA], procesado por Transbank (Webpay), y deberá aprobarse antes de la entrega. Si se utiliza un depósito efectivamente cobrado, esta modalidad deberá informarse de manera separada, indicando monto, custodio y condiciones de restitución; no se presentará como un simple bloqueo."
     },
     {
       "type": "p",
@@ -442,7 +442,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "Autorizo a [RAZÓN SOCIAL], a través de [PROVEEDOR DE PAGOS], a constituir una garantía mediante [PREAUTORIZACIÓN O DEPÓSITO] por [MONTO EXACTO] para la reserva [IDENTIFICADOR]. Conozco su vigencia, procedimiento de renovación y liberación, conceptos cubiertos y mecanismo de reclamo. Cualquier aplicación se sujetará a las cláusulas 8 a 10; no autorizo cargos ilimitados ni cobros por obligaciones controvertidas sin fundamento válido. Autorizo asimismo la transferencia al arrendador de la parte procedente de la garantía, con liquidación a ambas partes, conforme a la cláusula 10."
+      "text": "Autorizo a [RAZÓN SOCIAL], a través de Transbank (Webpay), a constituir una garantía mediante [PREAUTORIZACIÓN O DEPÓSITO] por [MONTO EXACTO] para la reserva [IDENTIFICADOR]. Conozco su vigencia, procedimiento de renovación y liberación, conceptos cubiertos y mecanismo de reclamo. Cualquier aplicación se sujetará a las cláusulas 8 a 10; no autorizo cargos ilimitados ni cobros por obligaciones controvertidas sin fundamento válido. Autorizo asimismo la transferencia al arrendador de la parte procedente de la garantía, con liquidación a ambas partes, conforme a la cláusula 10."
     },
     {
       "type": "p",
@@ -512,7 +512,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "li",
-      "text": "**Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Mercado Pago; RUÉ nunca los recibe ni los guarda."
+      "text": "**Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Transbank a través de Webpay; RUÉ nunca los recibe ni los guarda. Solo guardamos el tipo de pago (crédito, débito o prepago) y el número de cuotas."
     },
     {
       "type": "li",
@@ -584,7 +584,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "li",
-      "text": "**Mercado Pago:** para procesar los pagos."
+      "text": "**Transbank (Webpay):** para procesar los pagos con tarjeta."
     },
     {
       "type": "li",

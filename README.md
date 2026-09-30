@@ -5,7 +5,7 @@ Marketplace de activos de movilidad para Chile: autos, motos, camionetas, vans, 
 
 - App: Expo SDK 57 · React Native · Expo Router · TypeScript
 - Backend: Supabase (Postgres + RLS, Auth, Storage, Realtime)
-- Pagos: Mercado Pago Checkout Pro vía Edge Functions (`supabase/functions/`)
+- Pagos: Webpay Plus de Transbank (con cuotas) vía Edge Functions (`supabase/functions/`)
 
 - Memoria técnica (arquitectura, reglas, estados de reserva, backlog): [`CLAUDE.md`](./CLAUDE.md)
 - Lista de tareas para lanzar: [`LANZAMIENTO.md`](./LANZAMIENTO.md)

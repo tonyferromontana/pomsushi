@@ -113,7 +113,7 @@ writeFileSync(
     'Haz producir lo que tienes parado',
     `<h1>Haz producir lo que tienes parado.</h1>
 <p>RUÉ conecta a quienes tienen autos, motos, camionetas, vans, furgones y camiones sin usar con personas y empresas que los necesitan por días o semanas.</p>
-<div class="card"><h2>¿Necesitas un vehículo?</h2><p>Busca por tipo, comuna y fechas. Arrienda directo a su dueño, con pago seguro por Mercado Pago.</p></div>
+<div class="card"><h2>¿Necesitas un vehículo?</h2><p>Busca por tipo, comuna y fechas. Arrienda directo a su dueño, con pago seguro por Webpay, también en cuotas con tu tarjeta de crédito.</p></div>
 <div class="card"><h2>¿Tienes uno parado?</h2><p>Publícalo gratis, define tu precio y recibe solicitudes. Tú decides a quién se lo arriendas.</p></div>
 <p><a class="cta" href="soporte.html">Contáctanos</a></p>`,
   ),

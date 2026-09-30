@@ -229,14 +229,23 @@ Avísale al titular (el arrendatario) que se comunicaron sus datos, salvo que la
 
 ## 8. Reembolsos
 
-Los reembolsos se hacen en **Mercado Pago → Tu negocio → Ventas →** busca el pago **→ Devolver dinero**. Después cancela la reserva (bloque del punto 7) si no estaba cancelada.
+Si alguien paga una reserva que ya no se podía pagar (vencida, cancelada o pagada dos veces), **el sistema anula el cargo automáticamente** y le avisa.
 
-Pagos que llegaron cuando la reserva ya no se podía pagar (requieren devolución):
+Otros reembolsos (por ejemplo, una cancelación acordada) se hacen en el **Portal de Comercios de Transbank → Transacciones →** busca la orden de compra **→ Anular**. La orden de compra de cada reserva:
 
 ```sql
-select e.created_at, e.event_key, e.error
+select buy_order, amount_clp, status, payment_type, installments, created_at
+from public.payments where booking_id = '<id-de-la-reserva>' order by created_at;
+```
+
+Después cancela la reserva (bloque del punto 7) si no estaba cancelada.
+
+Pagos que requieren revisión manual (la anulación automática falló):
+
+```sql
+select e.created_at, e.event_key, e.payload ->> 'buy_order' as orden, e.error
 from public.payment_events e
-where e.error in ('not_payable', 'amount_mismatch')
+where e.provider = 'webpay' and e.error like '%anulación pendiente%'
 order by e.created_at desc;
 ```
 

@@ -40,6 +40,7 @@ type Detail = {
   events: BookingEvent[];
   reviewed: boolean;
   paymentPending: boolean;
+  paidWith: { payment_type: string | null; installments: number | null } | null;
   handovers: (Handover & { photoUrls: string[] })[];
 };
 
@@ -53,7 +54,7 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     supabase.from('booking_events').select('*').eq('booking_id', id).order('created_at'),
     supabase.rpc('booking_vehicle', { p_booking_id: id }),
     supabase.from('reviews').select('id').eq('booking_id', id).eq('author_id', userId).maybeSingle(),
-    supabase.from('payments').select('status').eq('booking_id', id).in('status', ['pending', 'in_process']),
+    supabase.from('payments').select('status, payment_type, installments').eq('booking_id', id).in('status', ['pending', 'in_process', 'approved']),
   ]);
   const handoverRes = await supabase.from('booking_handovers').select('*').eq('booking_id', id).order('created_at');
   if (handoverRes.error) logError('booking.handovers', handoverRes.error);
@@ -79,7 +80,8 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     other: (other.data as Profile) ?? null,
     events: (events.data ?? []) as BookingEvent[],
     reviewed: !!review.data,
-    paymentPending: (payments.data ?? []).length > 0,
+    paymentPending: (payments.data ?? []).some((p) => p.status === 'pending' || p.status === 'in_process'),
+    paidWith: (payments.data ?? []).find((p) => p.status === 'approved') ?? null,
     handovers,
   };
 }
@@ -212,7 +214,8 @@ export default function BookingScreen() {
   const step = nextStepText(role, b);
   const flowIndex = BOOKING_FLOW.indexOf(b.status);
 
-  // Pago: el servidor crea el link de Mercado Pago con el monto de la reserva.
+  // Pago con Webpay: el servidor crea la transacción con el monto de la reserva y, al volver,
+  // el propio servidor la confirma con Transbank. La app solo muestra el resultado.
   // Volver a la app NO confirma nada: la confirmación llega por el webhook y se ve en tiempo real.
   const pay = async () => {
     setPaying(true);
@@ -221,7 +224,7 @@ export default function BookingScreen() {
     try {
       track('checkout_started', { total: b.total_clp });
       const redirectUrl = Linking.createURL('pago');
-      const { data: res, error: err } = await supabase.functions.invoke('mp-create-preference', {
+      const { data: res, error: err } = await supabase.functions.invoke('webpay-create', {
         body: { booking_id: b.id, redirect_url: redirectUrl },
       });
       if (err) {
@@ -236,10 +239,14 @@ export default function BookingScreen() {
         const status = Linking.parse(result.url).queryParams?.status;
         setPayNotice(
           status === 'approved'
-            ? 'Pago recibido. Estamos confirmando tu reserva…'
-            : status === 'pending' || status === 'in_process'
-              ? 'Tu pago está pendiente. Te avisaremos cuando se apruebe.'
-              : 'El pago no se completó. Puedes intentarlo de nuevo.',
+            ? '¡Pago aprobado! Tu reserva quedó confirmada.'
+            : status === 'cancelled'
+              ? 'Anulaste el pago. Puedes intentarlo de nuevo.'
+              : status === 'refunded'
+                ? 'La reserva ya no estaba disponible, así que anulamos el cargo en tu tarjeta.'
+                : status === 'rejected'
+                  ? 'Tu banco no aprobó el pago. Prueba con otra tarjeta.'
+                  : 'No pudimos confirmar el pago. Revisa el estado de tu reserva en unos minutos.',
         );
       }
       await reload();
@@ -357,7 +364,8 @@ export default function BookingScreen() {
             <Notice tone="info">{payNotice ?? 'Tienes un pago pendiente de aprobación. Te avisaremos apenas se confirme.'}</Notice>
           ) : null}
           <Text variant="caption" color="textSecondary" align="center">
-            Pago seguro con Mercado Pago. RUÉ no guarda los datos de tu tarjeta.
+            Pago seguro con Webpay. Con tarjeta de crédito puedes elegir pagar en cuotas. RUÉ no guarda los datos
+            de tu tarjeta.
           </Text>
         </View>
       ) : null}
@@ -446,6 +454,19 @@ export default function BookingScreen() {
             {b.renter_fee_clp > 0 ? <Row label="Cargo de servicio" value={clp(b.renter_fee_clp)} /> : null}
             <Divider spacing={space.sm} />
             <Row label="Total" value={clp(b.total_clp)} strong />
+            {data.paidWith ? (
+              <Text variant="caption" color="textSecondary">
+                Pagado con Webpay
+                {data.paidWith.installments && data.paidWith.installments > 1
+                  ? ` en ${data.paidWith.installments} cuotas`
+                  : data.paidWith.payment_type === 'VD'
+                    ? ' con débito'
+                    : data.paidWith.payment_type === 'VP'
+                      ? ' con prepago'
+                      : ' con crédito'}
+                .
+              </Text>
+            ) : null}
           </>
         ) : (
           <>
