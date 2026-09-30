@@ -1,6 +1,6 @@
 // ARCHIVO GENERADO por scripts/build-legal.mjs — no editar a mano. Edita legal/*.md.
 export type LegalBlock = { type: 'h1' | 'h2' | 'p' | 'li' | 'oli'; text: string; n?: number };
-export const TERMS_VERSION = "2026-09-30";
+export const TERMS_VERSION = "2026-10-01";
 export const SUPPORT_EMAIL = "[CORREO DE SOPORTE]";
 export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
   "terminos": [
@@ -10,11 +10,11 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "Términos y condiciones de arriendo de autos y motocicletas."
+      "text": "Términos y condiciones de arriendo de vehículos: automóviles, motocicletas, camionetas, SUV, vans, furgones, minibuses, camiones, carros de arrastre y otros vehículos motorizados."
     },
     {
       "type": "p",
-      "text": "Versión 2026-09-30 · BORRADOR PARA REVISIÓN DE UN ABOGADO · Modelo para operaciones en Chile"
+      "text": "Versión 2026-10-01 · BORRADOR PARA REVISIÓN DE UN ABOGADO · Modelo para operaciones en Chile"
     },
     {
       "type": "h2",
@@ -26,7 +26,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "El usuario arrendador es el propietario inscrito del automóvil o motocicleta que ofrece en arriendo, verificado conforme a la cláusula 4. El usuario arrendatario es quien contrata su uso temporal. El conductor autorizado es la persona expresamente identificada en la reserva y habilitada para conducir. Una misma persona puede actuar como arrendador o arrendatario en reservas distintas."
+      "text": "El usuario arrendador es el propietario inscrito del vehículo que ofrece en arriendo, verificado conforme a la cláusula 4. El usuario arrendatario es quien contrata su uso temporal. El conductor autorizado es la persona expresamente identificada en la reserva y habilitada para conducir. Una misma persona puede actuar como arrendador o arrendatario en reservas distintas."
     },
     {
       "type": "p",
@@ -94,7 +94,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "Deberá mantener vigente el permiso de circulación, SOAP, revisión técnica u homologación y demás documentos legalmente exigibles. El vehículo deberá encontrarse en condiciones seguras de funcionamiento, con mantenciones necesarias, neumáticos, frenos, luces, cinturones y elementos de seguridad en buen estado. Tratándose de motocicletas, deberán precisarse los elementos de protección incluidos, sin perjuicio de las obligaciones legales del conductor y pasajero."
+      "text": "Deberá mantener vigente el permiso de circulación, SOAP, revisión técnica u homologación y demás documentos legalmente exigibles. El vehículo deberá encontrarse en condiciones seguras de funcionamiento, con mantenciones necesarias, neumáticos, frenos, luces, cinturones y elementos de seguridad en buen estado. Tratándose de motocicletas, deberán precisarse los elementos de protección incluidos, sin perjuicio de las obligaciones legales del conductor y pasajero. Tratándose de camiones, carros de arrastre y vehículos de carga, deberán informarse la capacidad de carga, el peso bruto y las restricciones de circulación aplicables."
     },
     {
       "type": "p",
@@ -110,7 +110,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "El arrendatario deberá mantener vigentes sus documentos y contar con licencia apta para el vehículo: clase B para automóviles y clase C para motocicletas, o la habilitación legal equivalente que corresponda. Las licencias extranjeras solo serán aceptadas cuando habiliten legalmente para conducir en Chile. Cualquier exigencia adicional de edad o antigüedad deberá informarse antes de reservar y ser compatible con el seguro."
+      "text": "El arrendatario deberá mantener vigentes sus documentos y contar con licencia apta para el vehículo: clase B para automóviles, camionetas, SUV y vans particulares; clase C para motocicletas; clases profesionales A (A1 a A5) cuando el tipo de vehículo, su peso, capacidad o uso lo exijan, como camiones, minibuses o transporte remunerado; clase D para maquinaria; o la habilitación legal equivalente que corresponda. Cada publicación indicará la licencia requerida. Las licencias extranjeras solo serán aceptadas cuando habiliten legalmente para conducir en Chile. Cualquier exigencia adicional de edad o antigüedad deberá informarse antes de reservar y ser compatible con el seguro."
     },
     {
       "type": "p",
@@ -123,6 +123,10 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     {
       "type": "p",
       "text": "Antes de confirmar, se mostrará una ficha con identidad de las partes; vehículo; fechas y horas exactas; modalidad diaria o mensual y su cómputo; entrega y devolución; precio total; comisión; impuestos; garantía; seguro; deducibles; kilometraje; combustible; restricciones; tarifas adicionales y cancelaciones."
+    },
+    {
+      "type": "p",
+      "text": "El precio se calcula por días completos. Al aceptar una solicitud, el arrendador propone la hora de entrega del primer día y la hora de devolución del último día; el arrendatario las conoce antes de pagar y, si no le acomodan, puede no pagar sin costo. Una vez pagada la reserva, las horas solo pueden cambiarse de común acuerdo."
     },
     {
       "type": "p",
@@ -318,7 +322,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "Mediante aceptación expresa y separada de la autorización incluida al final de este documento, el arrendatario autoriza a [RAZÓN SOCIAL], como Operadora de RUÉ, para comunicar al arrendador de la reserva involucrada, y a su abogado debidamente identificado y acreditado, los datos personales estrictamente necesarios para identificarlo, gestionar un incidente y ejercer o defender acciones legales derivadas de esa reserva."
+      "text": "Mediante aceptación expresa y separada de la autorización incluida al final de este documento, que es requisito para reservar en la Plataforma, el arrendatario autoriza a [RAZÓN SOCIAL], como Operadora de RUÉ, para comunicar al arrendador de la reserva involucrada, y a su abogado debidamente identificado y acreditado, los datos personales estrictamente necesarios para identificarlo, gestionar un incidente y ejercer o defender acciones legales derivadas de esa reserva."
     },
     {
       "type": "p",
@@ -430,7 +434,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "He leído y acepto los términos y condiciones de RUÉ, versión 2026-09-30, y las condiciones particulares de la reserva [IDENTIFICADOR], cuya copia puedo descargar y conservar."
+      "text": "He leído y acepto los términos y condiciones de RUÉ, versión 2026-10-01, y las condiciones particulares de la reserva [IDENTIFICADOR], cuya copia puedo descargar y conservar."
     },
     {
       "type": "p",
@@ -464,7 +468,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "Versión 2026-09-30 · BORRADOR PARA REVISIÓN DE UN ABOGADO"
+      "text": "Versión 2026-10-01 · BORRADOR PARA REVISIÓN DE UN ABOGADO"
     },
     {
       "type": "p",
@@ -576,7 +580,7 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "li",
-      "text": "**El arrendador y su abogado, solo ante un incidente:** si autorizaste la comunicación de datos al reservar (casilla C de los Términos) y existen antecedentes verificables de daños, accidente, falta de restitución, uso indebido u otros hechos relacionados con esa reserva, podemos comunicar al arrendador afectado y a su abogado acreditado tu nombre completo, RUT, domicilio declarado, correo, teléfono y los antecedentes de esa reserva, solo para gestionar el reclamo o ejercer acciones legales. Cada comunicación queda registrada (destinatario, fecha, datos y motivo) y te avisamos, salvo que la ley lo impida. Nunca entregamos datos bancarios, claves, biometría ni información de otras reservas, y la copia de tu cédula o licencia solo si es específicamente necesaria. Las mismas reglas aplican cuando el arrendatario necesita datos del arrendador para ejercer sus derechos."
+      "text": "**El arrendador y su abogado, solo ante un incidente:** según la autorización que otorgas al reservar (casilla C de los Términos, requisito para reservar), y solo si existen antecedentes verificables de daños, accidente, falta de restitución, uso indebido u otros hechos relacionados con esa reserva, podemos comunicar al arrendador afectado y a su abogado acreditado tu nombre completo, RUT, domicilio declarado, correo, teléfono y los antecedentes de esa reserva, solo para gestionar el reclamo o ejercer acciones legales. Cada comunicación queda registrada (destinatario, fecha, datos y motivo) y te avisamos, salvo que la ley lo impida. Nunca entregamos datos bancarios, claves, biometría ni información de otras reservas, y la copia de tu cédula o licencia solo si es específicamente necesaria. Las mismas reglas aplican cuando el arrendatario necesita datos del arrendador para ejercer sus derechos."
     },
     {
       "type": "li",

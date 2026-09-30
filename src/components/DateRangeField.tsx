@@ -186,3 +186,64 @@ export function DateField({
     </>
   );
 }
+
+/** Campo de hora 'HH:MM' (por ejemplo, hora de entrega propuesta por el propietario). */
+export function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (hhmm: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const toDate = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d;
+  };
+  const toHHMM = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const [draft, setDraft] = useState<Date>(toDate(value));
+
+  const show = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: toDate(value),
+        mode: 'time',
+        is24Hour: true,
+        minuteInterval: 15,
+        onChange: (event: DateTimePickerEvent, d?: Date) => {
+          if (event.type === 'set' && d) onChange(toHHMM(d));
+        },
+      });
+      return;
+    }
+    setDraft(toDate(value));
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <FieldButton label={label} icon="time-outline" placeholder="Elegir hora" value={value} onPress={show} style={{ flex: 1 }} />
+      {Platform.OS === 'ios' ? (
+        <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+          <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+            <Pressable style={styles.sheet} onPress={() => undefined}>
+              <Text variant="h3">{label}</Text>
+              <DateTimePicker
+                value={draft}
+                mode="time"
+                display="spinner"
+                themeVariant="dark"
+                locale="es-CL"
+                minuteInterval={15}
+                onChange={(_e, d) => d && setDraft(d)}
+              />
+              <Button
+                label="Listo"
+                onPress={() => {
+                  onChange(toHHMM(draft));
+                  setOpen(false);
+                }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : null}
+    </>
+  );
+}

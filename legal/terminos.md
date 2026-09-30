@@ -1,14 +1,14 @@
 # Términos y Condiciones de RUÉ
 
-Términos y condiciones de arriendo de autos y motocicletas.
+Términos y condiciones de arriendo de vehículos: automóviles, motocicletas, camionetas, SUV, vans, furgones, minibuses, camiones, carros de arrastre y otros vehículos motorizados.
 
-Versión 2026-09-30 · BORRADOR PARA REVISIÓN DE UN ABOGADO · Modelo para operaciones en Chile
+Versión 2026-10-01 · BORRADOR PARA REVISIÓN DE UN ABOGADO · Modelo para operaciones en Chile
 
 ## 1. Identificación y ámbito de aplicación
 
 Estos términos regulan el acceso a RUÉ, en adelante la Plataforma, y los contratos de arriendo de vehículos celebrados entre sus usuarios. La Plataforma es operada por [RAZÓN SOCIAL], RUT [RUT], con domicilio en [DOMICILIO], correo [CORREO DE CONTACTO] y canal de soporte [CANAL DE SOPORTE], en adelante la Operadora.
 
-El usuario arrendador es el propietario inscrito del automóvil o motocicleta que ofrece en arriendo, verificado conforme a la cláusula 4. El usuario arrendatario es quien contrata su uso temporal. El conductor autorizado es la persona expresamente identificada en la reserva y habilitada para conducir. Una misma persona puede actuar como arrendador o arrendatario en reservas distintas.
+El usuario arrendador es el propietario inscrito del vehículo que ofrece en arriendo, verificado conforme a la cláusula 4. El usuario arrendatario es quien contrata su uso temporal. El conductor autorizado es la persona expresamente identificada en la reserva y habilitada para conducir. Una misma persona puede actuar como arrendador o arrendatario en reservas distintas.
 
 Los términos se complementan con la ficha de reserva, el acta de entrega y devolución, la política de privacidad y las condiciones de seguro efectivamente aplicables. Las condiciones particulares deben ser conocidas y aceptadas antes de contratar. Ninguna condición particular puede restringir derechos irrenunciables ni autorizar usos incompatibles con la ley o la cobertura contratada.
 
@@ -42,7 +42,7 @@ El arrendador deberá volver a cargar un Certificado de Anotaciones Vigentes act
 
 Sin perjuicio de la renovación semestral, el arrendador deberá mantener su calidad de propietario durante el período contratado y avisar inmediatamente a la Plataforma cualquier transferencia, cambio de propietario, solicitud de transferencia, cambio registral o limitación relevante. Deberá actualizar sin demora el certificado tan pronto como el cambio figure en el registro y, mientras ello esté pendiente, aportar los antecedentes disponibles y suspender nuevas reservas si deja de cumplir los requisitos. La transferencia no habilita a continuar publicando desde la cuenta del anterior propietario: el nuevo dueño deberá registrar o actualizar su propia cuenta y acreditar su dominio antes de ofrecer el vehículo. Una compraventa pendiente de inscripción no bastará para publicar como propietario. No podrán ofrecerse vehículos robados, con prohibiciones o limitaciones incompatibles con el arriendo ni sujetos a contratos que impidan este uso. Las anotaciones registrales se evaluarán según su alcance concreto, pues no todas implican una prohibición de arrendar.
 
-Deberá mantener vigente el permiso de circulación, SOAP, revisión técnica u homologación y demás documentos legalmente exigibles. El vehículo deberá encontrarse en condiciones seguras de funcionamiento, con mantenciones necesarias, neumáticos, frenos, luces, cinturones y elementos de seguridad en buen estado. Tratándose de motocicletas, deberán precisarse los elementos de protección incluidos, sin perjuicio de las obligaciones legales del conductor y pasajero.
+Deberá mantener vigente el permiso de circulación, SOAP, revisión técnica u homologación y demás documentos legalmente exigibles. El vehículo deberá encontrarse en condiciones seguras de funcionamiento, con mantenciones necesarias, neumáticos, frenos, luces, cinturones y elementos de seguridad en buen estado. Tratándose de motocicletas, deberán precisarse los elementos de protección incluidos, sin perjuicio de las obligaciones legales del conductor y pasajero. Tratándose de camiones, carros de arrastre y vehículos de carga, deberán informarse la capacidad de carga, el peso bruto y las restricciones de circulación aplicables.
 
 La publicación deberá indicar tipo de vehículo, patente, características relevantes, restricciones, kilometraje permitido, combustible o carga requerida, lugares de entrega, precio, garantía y cobertura de seguro. Se deberán informar desperfectos, daños previos y cualquier condición que afecte la seguridad o utilización. Está prohibido ocultar dispositivos de seguimiento.
 
@@ -50,13 +50,15 @@ El arrendador no podrá retirar anticipadamente el vehículo de manera arbitrari
 
 ## 5. Requisitos del arrendatario y conductores autorizados
 
-El arrendatario deberá mantener vigentes sus documentos y contar con licencia apta para el vehículo: clase B para automóviles y clase C para motocicletas, o la habilitación legal equivalente que corresponda. Las licencias extranjeras solo serán aceptadas cuando habiliten legalmente para conducir en Chile. Cualquier exigencia adicional de edad o antigüedad deberá informarse antes de reservar y ser compatible con el seguro.
+El arrendatario deberá mantener vigentes sus documentos y contar con licencia apta para el vehículo: clase B para automóviles, camionetas, SUV y vans particulares; clase C para motocicletas; clases profesionales A (A1 a A5) cuando el tipo de vehículo, su peso, capacidad o uso lo exijan, como camiones, minibuses o transporte remunerado; clase D para maquinaria; o la habilitación legal equivalente que corresponda. Cada publicación indicará la licencia requerida. Las licencias extranjeras solo serán aceptadas cuando habiliten legalmente para conducir en Chile. Cualquier exigencia adicional de edad o antigüedad deberá informarse antes de reservar y ser compatible con el seguro.
 
 Solo podrán conducir las personas identificadas y aceptadas en la reserva, cuya licencia e identidad hayan sido verificadas. La incorporación de otro conductor requiere aprobación previa y confirmación de cobertura. El arrendatario deberá informar estas condiciones a los conductores autorizados. Ninguna estipulación crea responsabilidad penal por hechos ajenos.
 
 ## 6. Reserva y aceptación electrónica
 
 Antes de confirmar, se mostrará una ficha con identidad de las partes; vehículo; fechas y horas exactas; modalidad diaria o mensual y su cómputo; entrega y devolución; precio total; comisión; impuestos; garantía; seguro; deducibles; kilometraje; combustible; restricciones; tarifas adicionales y cancelaciones.
+
+El precio se calcula por días completos. Al aceptar una solicitud, el arrendador propone la hora de entrega del primer día y la hora de devolución del último día; el arrendatario las conoce antes de pagar y, si no le acomodan, puede no pagar sin costo. Una vez pagada la reserva, las horas solo pueden cambiarse de común acuerdo.
 
 La reserva quedará perfeccionada cuando ambas partes la acepten conforme al flujo de contratación, el pago exigido sea aprobado y la garantía sea constituida según estas condiciones. Una solicitud pendiente no equivale a una reserva confirmada. Las extensiones requerirán aceptación de ambas partes, pago adicional y mantenimiento de la garantía y cobertura.
 
@@ -154,7 +156,7 @@ Los antecedentes se conservarán por [PERÍODOS DE CONSERVACIÓN POR CATEGORÍA]
 
 ## 17. Autorización específica para comunicar datos al arrendador
 
-Mediante aceptación expresa y separada de la autorización incluida al final de este documento, el arrendatario autoriza a [RAZÓN SOCIAL], como Operadora de RUÉ, para comunicar al arrendador de la reserva involucrada, y a su abogado debidamente identificado y acreditado, los datos personales estrictamente necesarios para identificarlo, gestionar un incidente y ejercer o defender acciones legales derivadas de esa reserva.
+Mediante aceptación expresa y separada de la autorización incluida al final de este documento, que es requisito para reservar en la Plataforma, el arrendatario autoriza a [RAZÓN SOCIAL], como Operadora de RUÉ, para comunicar al arrendador de la reserva involucrada, y a su abogado debidamente identificado y acreditado, los datos personales estrictamente necesarios para identificarlo, gestionar un incidente y ejercer o defender acciones legales derivadas de esa reserva.
 
 Esta comunicación podrá proceder ante antecedentes verificables de daños al vehículo, accidente, incumplimiento de restitución, pérdida o faltantes, uso no autorizado, impagos exigibles, suplantación, fraude o hechos que pudieran constituir un ilícito. Podrá tener por finalidad un requerimiento de cumplimiento, reclamación al seguro, acción civil de restitución o indemnización, denuncia o querella penal, según corresponda. No requerirá necesariamente una sentencia previa, pero sí un fundamento concreto y verificable y una base jurídica vigente.
 
@@ -210,7 +212,7 @@ Las comunicaciones contractuales se enviarán a los contactos declarados y por l
 
 **Casilla A · Aceptación de términos**
 
-He leído y acepto los términos y condiciones de RUÉ, versión 2026-09-30, y las condiciones particulares de la reserva [IDENTIFICADOR], cuya copia puedo descargar y conservar.
+He leído y acepto los términos y condiciones de RUÉ, versión 2026-10-01, y las condiciones particulares de la reserva [IDENTIFICADOR], cuya copia puedo descargar y conservar.
 
 **Casilla B · Autorización de garantía**
 

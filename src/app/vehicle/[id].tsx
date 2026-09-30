@@ -176,7 +176,7 @@ export default function VehicleScreen() {
         label="Solicitar"
         onPress={request}
         loading={sending}
-        disabled={!quote || quoting || !acceptTerms}
+        disabled={!quote || quoting || !acceptTerms || !acceptData}
         style={{ paddingHorizontal: space.xxl }}
       />
     </View>
@@ -330,7 +330,8 @@ export default function VehicleScreen() {
                     </Text>
                   ) : null}
                   <Text variant="caption" color="textSecondary">
-                    No se cobra nada hasta que el propietario acepte.
+                    No se cobra nada hasta que el propietario acepte. Al aceptar, te propondrá la hora de entrega y de
+                    devolución; si no te acomodan, simplemente no pagas.
                   </Text>
                 </View>
               ) : null}
@@ -358,7 +359,8 @@ export default function VehicleScreen() {
                   </Checkbox>
                   <Checkbox checked={acceptData} onChange={setAcceptData}>
                     Autorizo a RUÉ a comunicar mis datos de identificación y contacto al propietario y a su abogado
-                    acreditado solo si hay un incidente verificable con esta reserva, según las cláusulas 16 a 19.
+                    acreditado solo si hay un incidente verificable con esta reserva, según las cláusulas 16 a 19
+                    (requisito para reservar).
                   </Checkbox>
                 </View>
               ) : null}

@@ -84,7 +84,7 @@ begin
     raise exception 'FALLA: cotización incorrecta %', q;
   end if;
 
-  bid := public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 10, public.today_cl() + 18, 'viaje', 'Hola!', p_terms_version => '2026-09-30', p_accept_terms => true);
+  bid := public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 10, public.today_cl() + 18, 'viaje', 'Hola!', p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true);
   select * into b from public.bookings where id = bid;
   if b.status <> 'solicitada' or b.owner_commission_clp <> 35000 or b.owner_payout_clp <> 315000 then
     raise exception 'FALLA: reserva mal calculada %', row_to_json(b);
@@ -109,7 +109,7 @@ begin
   exception when insufficient_privilege then null; end;
 
   begin
-    perform public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() - 1, public.today_cl() + 2, p_terms_version => '2026-09-30', p_accept_terms => true);
+    perform public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() - 1, public.today_cl() + 2, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true);
     raise exception 'FALLA: aceptó una reserva en el pasado';
   exception when invalid_parameter_value then null; end;
 
@@ -139,7 +139,7 @@ begin
 
   -- Solicitud que se cruza (queda "solicitada"; se rechazará al aceptar la otra)
   perform set_config('rue.test_booking_c',
-    public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 12, public.today_cl() + 14, p_terms_version => '2026-09-30', p_accept_terms => true)::text, false);
+    public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 12, public.today_cl() + 14, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
 end $$;
 
 -- ---------------------------------------------------------------- Propietario acepta
@@ -150,7 +150,7 @@ set role authenticated;
 do $$
 declare bid uuid := current_setting('rue.test_booking')::uuid; b public.bookings;
 begin
-  b := public.transition_booking(bid, 'aceptada');
+  b := public.accept_booking(bid, '10:00', '18:00');
   if b.status <> 'aceptada' or b.expires_at is null then raise exception 'FALLA: no quedó aceptada'; end if;
 
   if (select status from public.bookings where id = current_setting('rue.test_booking_c')::uuid) <> 'rechazada' then
@@ -171,7 +171,7 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 set role authenticated;
 do $$ begin
   begin
-    perform public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 11, public.today_cl() + 13, p_terms_version => '2026-09-30', p_accept_terms => true);
+    perform public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 11, public.today_cl() + 13, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true);
     raise exception 'FALLA: permitió solicitar fechas ya aceptadas';
   exception when raise_exception then null; end;
   if (select count(*) from public.messages) <> 0 then raise exception 'FALLA: un tercero lee mensajes ajenos'; end if;
@@ -211,12 +211,12 @@ end $$;
 reset role;
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
 set role authenticated;
-select set_config('rue.b2', public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2, p_terms_version => '2026-09-30', p_accept_terms => true)::text, false);
+select set_config('rue.b2', public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
 
 reset role;
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 set role authenticated;
-select public.transition_booking(current_setting('rue.b2')::uuid, 'aceptada') is not null;
+select public.accept_booking(current_setting('rue.b2')::uuid, '10:00', '18:00') is not null;
 
 reset role;
 select pg_temp.as_user(null);
@@ -263,7 +263,7 @@ end $$;
 update public.platform_settings set value = '24' where key = 'request_expiry_hours';
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
 set role authenticated;
-select set_config('rue.b3', public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 30, public.today_cl() + 32, p_terms_version => '2026-09-30', p_accept_terms => true)::text, false);
+select set_config('rue.b3', public.request_booking('10000000-0000-0000-0000-000000000001', public.today_cl() + 30, public.today_cl() + 32, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
 reset role;
 update public.bookings set expires_at = now() - interval '1 minute' where id = current_setting('rue.b3')::uuid;
 set role service_role;

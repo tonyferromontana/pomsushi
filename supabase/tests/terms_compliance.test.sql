@@ -70,15 +70,15 @@ do $$ begin
   exception when invalid_parameter_value then null; end;
   begin
     perform public.request_booking('50000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2,
-      p_terms_version => '2020-01-01', p_accept_terms => true);
+      p_terms_version => '2020-01-01', p_accept_terms => true, p_accept_data_sharing => true);
     raise exception 'FALLA: aceptó una versión vieja de los términos';
   exception when raise_exception then
     if sqlerrm like 'FALLA%' then raise; end if;
   end;
   perform set_config('rue.t5', public.request_booking('50000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2,
-    p_terms_version => '2026-09-30', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
+    p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
   if not exists (select 1 from public.booking_consents where booking_id = current_setting('rue.t5')::uuid
-                 and terms_accepted and data_sharing_accepted and terms_version = '2026-09-30') then
+                 and terms_accepted and data_sharing_accepted and terms_version = '2026-10-01') then
     raise exception 'FALLA: no se registraron las casillas de la reserva';
   end if;
 end $$;
@@ -86,7 +86,7 @@ reset role;
 
 select pg_temp.as_user('40000000-0000-0000-0000-00000000000a');
 set role authenticated;
-select public.transition_booking(current_setting('rue.t5')::uuid, 'aceptada') is not null;
+select public.accept_booking(current_setting('rue.t5')::uuid, '10:00', '18:00') is not null;
 reset role;
 set role service_role;
 do $$ begin
@@ -180,3 +180,82 @@ reset role;
 
 update public.platform_settings set value = 'false' where key = 'require_vehicle_verification';
 select 'pruebas de cumplimiento de términos OK' as resultado;
+
+-- ------------------------------------------------ 0006: horas del arrendador y casilla C obligatoria
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('60000000-0000-0000-0000-00000000000a', 'o6@test.cl', '{"display_name":"Owner6"}'),
+  ('60000000-0000-0000-0000-00000000000b', 'r6@test.cl', '{"display_name":"Renter6"}');
+select pg_temp.as_user('60000000-0000-0000-0000-00000000000a');
+set role authenticated;
+insert into public.vehicles (id, owner_id, vehicle_type, status, title, brand, model, year, city, daily_price_clp)
+values ('70000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-00000000000a', 'truck', 'publicado',
+        'Camión 3/4 para mudanzas', 'Hyundai', 'HD65', 2020, 'Santiago', 60000);
+reset role;
+
+select pg_temp.as_user('60000000-0000-0000-0000-00000000000b');
+set role authenticated;
+do $$ begin
+  begin
+    perform public.request_booking('70000000-0000-0000-0000-000000000001', public.today_cl() + 3, public.today_cl() + 5,
+      p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => false);
+    raise exception 'FALLA: permitió reservar sin la casilla C';
+  exception when invalid_parameter_value then null; end;
+  perform set_config('rue.t6', public.request_booking('70000000-0000-0000-0000-000000000001', public.today_cl() + 3, public.today_cl() + 5,
+    p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
+end $$;
+reset role;
+
+select pg_temp.as_user('60000000-0000-0000-0000-00000000000a');
+set role authenticated;
+do $$
+declare bid uuid := current_setting('rue.t6')::uuid; b public.bookings;
+begin
+  begin
+    perform public.transition_booking(bid, 'aceptada');
+    raise exception 'FALLA: se aceptó sin proponer horas';
+  exception when raise_exception then
+    if sqlerrm like 'FALLA%' then raise; end if;
+  end;
+  b := public.accept_booking(bid, '09:30', '19:00');
+  if b.status <> 'aceptada' or b.pickup_time <> '09:30' or b.return_time <> '19:00' then
+    raise exception 'FALLA: no quedaron las horas propuestas';
+  end if;
+end $$;
+reset role;
+do $$ begin
+  if not exists (select 1 from public.notifications where booking_id = current_setting('rue.t6')::uuid
+                 and kind = 'booking_accepted' and body like '%09:30%') then
+    raise exception 'FALLA: el aviso no incluye la hora de entrega';
+  end if;
+end $$;
+
+select pg_temp.as_user('60000000-0000-0000-0000-00000000000b');
+set role authenticated;
+do $$ begin
+  begin
+    perform public.accept_booking(current_setting('rue.t6')::uuid, '08:00', '08:00');
+    raise exception 'FALLA: el arrendatario pudo fijar las horas';
+  exception when no_data_found or raise_exception then
+    if sqlerrm like 'FALLA%' then raise; end if;
+  end;
+end $$;
+reset role;
+
+set role service_role;
+select pg_temp.as_user(null);
+do $$ begin
+  if public.confirm_booking_payment(current_setting('rue.t6')::uuid, 'mp-t6', 120000, 'test') <> 'confirmed' then
+    raise exception 'FALLA: no se confirmó el pago t6';
+  end if;
+end $$;
+reset role;
+do $$ begin
+  begin
+    update public.bookings set pickup_time = '06:00' where id = current_setting('rue.t6')::uuid;
+    raise exception 'FALLA: se cambiaron las horas de una reserva pagada';
+  exception when raise_exception then
+    if sqlerrm like 'FALLA%' then raise; end if;
+  end;
+end $$;
+
+select 'pruebas de horas y casilla C OK' as resultado;

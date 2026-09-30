@@ -37,7 +37,7 @@ select pg_temp.as_user('20000000-0000-0000-0000-00000000000b');
 set role authenticated;
 do $$ begin
   begin
-    perform public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl() + 1, public.today_cl() + 3, p_terms_version => '2026-09-30', p_accept_terms => true);
+    perform public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl() + 1, public.today_cl() + 3, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true);
     raise exception 'FALLA: permitió arrendar sin licencia verificada';
   exception when raise_exception then
     if sqlerrm like 'FALLA%' then raise; end if;
@@ -64,7 +64,7 @@ reset role;
 -- ------------------------------------------------ Reserva completa con avisos y pago rechazado
 select pg_temp.as_user('20000000-0000-0000-0000-00000000000b');
 set role authenticated;
-select set_config('rue.t2', public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2, p_terms_version => '2026-09-30', p_accept_terms => true)::text, false);
+select set_config('rue.t2', public.request_booking('30000000-0000-0000-0000-000000000001', public.today_cl(), public.today_cl() + 2, p_terms_version => '2026-10-01', p_accept_terms => true, p_accept_data_sharing => true)::text, false);
 reset role;
 
 do $$ begin
@@ -78,7 +78,7 @@ end $$;
 
 select pg_temp.as_user('20000000-0000-0000-0000-00000000000a');
 set role authenticated;
-select public.transition_booking(current_setting('rue.t2')::uuid, 'aceptada') is not null;
+select public.accept_booking(current_setting('rue.t2')::uuid, '10:00', '18:00') is not null;
 insert into public.messages (booking_id, sender_id, body) values (current_setting('rue.t2')::uuid, auth.uid(), 'Hola');
 insert into public.messages (booking_id, sender_id, body) values (current_setting('rue.t2')::uuid, auth.uid(), 'Hola de nuevo');
 reset role;

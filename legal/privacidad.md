@@ -1,6 +1,6 @@
 # Política de Privacidad de RUÉ
 
-Versión 2026-09-30 · BORRADOR PARA REVISIÓN DE UN ABOGADO
+Versión 2026-10-01 · BORRADOR PARA REVISIÓN DE UN ABOGADO
 
 En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolectamos, para qué los usamos, con quién los compartimos y cómo puedes ejercer tus derechos, de acuerdo con la Ley N° 19.628 sobre Protección de la Vida Privada y la Ley N° 21.719 que la modifica.
 
@@ -40,7 +40,7 @@ Tratamos tus datos porque son necesarios para cumplir el contrato que celebras c
 ## 5. Con quién los compartimos
 
 - **La otra parte de tu reserva:** tu nombre visible, foto, reputación y lo necesario para coordinar la entrega. Tu RUT, teléfono, documentos y datos bancarios no se muestran a otros usuarios.
-- **El arrendador y su abogado, solo ante un incidente:** si autorizaste la comunicación de datos al reservar (casilla C de los Términos) y existen antecedentes verificables de daños, accidente, falta de restitución, uso indebido u otros hechos relacionados con esa reserva, podemos comunicar al arrendador afectado y a su abogado acreditado tu nombre completo, RUT, domicilio declarado, correo, teléfono y los antecedentes de esa reserva, solo para gestionar el reclamo o ejercer acciones legales. Cada comunicación queda registrada (destinatario, fecha, datos y motivo) y te avisamos, salvo que la ley lo impida. Nunca entregamos datos bancarios, claves, biometría ni información de otras reservas, y la copia de tu cédula o licencia solo si es específicamente necesaria. Las mismas reglas aplican cuando el arrendatario necesita datos del arrendador para ejercer sus derechos.
+- **El arrendador y su abogado, solo ante un incidente:** según la autorización que otorgas al reservar (casilla C de los Términos, requisito para reservar), y solo si existen antecedentes verificables de daños, accidente, falta de restitución, uso indebido u otros hechos relacionados con esa reserva, podemos comunicar al arrendador afectado y a su abogado acreditado tu nombre completo, RUT, domicilio declarado, correo, teléfono y los antecedentes de esa reserva, solo para gestionar el reclamo o ejercer acciones legales. Cada comunicación queda registrada (destinatario, fecha, datos y motivo) y te avisamos, salvo que la ley lo impida. Nunca entregamos datos bancarios, claves, biometría ni información de otras reservas, y la copia de tu cédula o licencia solo si es específicamente necesaria. Las mismas reglas aplican cuando el arrendatario necesita datos del arrendador para ejercer sus derechos.
 - **Mercado Pago:** para procesar los pagos.
 - **Proveedores tecnológicos** que nos prestan servicios bajo contrato y confidencialidad: Supabase (base de datos y almacenamiento, con servidores en Brasil) y Expo (envío de notificaciones). Esto implica una transferencia internacional de datos, que realizamos con resguardos adecuados.
 - **Autoridades**, cuando la ley o una orden judicial lo exija.

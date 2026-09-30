@@ -15,7 +15,7 @@ import { colors, space } from '@/theme';
 type Side = 'renter' | 'owner';
 type BookingRow = Pick<
   Booking,
-  'id' | 'vehicle_id' | 'status' | 'start_date' | 'end_date' | 'days' | 'total_clp' | 'owner_payout_clp' | 'created_at'
+  'id' | 'vehicle_id' | 'status' | 'start_date' | 'end_date' | 'days' | 'total_clp' | 'owner_payout_clp' | 'created_at' | 'pickup_time' | 'return_time'
 > & { vehicle_title: string; vehicle_type: VehicleType };
 
 // my_bookings() devuelve el título aunque el vehículo esté pausado.

@@ -155,6 +155,8 @@ export type Booking = {
   deposit_clp: number;
   renter_message: string | null;
   expires_at: string | null;
+  pickup_time: string | null; // 'HH:MM:SS', la propone el propietario al aceptar
+  return_time: string | null;
   created_at: string;
   updated_at: string;
 };

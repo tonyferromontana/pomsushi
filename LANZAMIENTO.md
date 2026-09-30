@@ -23,19 +23,28 @@ Los precios son aproximados; confírmalos en cada sitio antes de pagar.
 - [x] **Términos y Condiciones:** tu documento (`legal/fuente/…docx`) ya es el texto oficial de la app y del sitio (`legal/terminos.md`). Las notas internas del modelo quedaron en `legal/notas-internas.md` (no se publican).
 - [ ] **Abogado.** Llévale `legal/terminos.md` y `legal/privacidad.md`. Pídele que:
   - Complete lo que está `[ENTRE CORCHETES]`: razón social, RUT, domicilio, canales, plazos de reclamo, descargos y liquidación, porcentaje y base de la comisión, garantía y plazos de conservación de datos.
-  - Confirme si la **casilla C** (comunicar datos al arrendador) puede ser obligatoria para reservar. Hoy es opcional y queda registrada.
-  - Revise el **derecho de retracto** (10 días) y la política de cancelación.
+  - Valide que la **casilla C** (comunicar datos al arrendador) sea obligatoria para reservar, como decidiste. Tu propio modelo advierte "no condicionar el servicio a consentimientos para usos innecesarios"; el abogado debe confirmar que esta autorización es necesaria para el servicio.
+  - Defina cómo aplicar el **derecho de retracto** (ver más abajo) y la política de cancelación.
+  - Revise la ampliación de los Términos a **todos los tipos de vehículo** (licencias profesionales, camiones, carga).
   - Revise la aplicación del **artículo 43 de la Ley 19.496** al modelo.
   - Revise la parte tributaria: IVA de la comisión y quién emite boleta o factura.
   - Cuando esté listo, mándale los textos finales a Claude.
-- [ ] **Decidir el alcance: ¿solo autos y motos, o todos los tipos de vehículo?** Tus Términos hablan de "autos y motocicletas" (licencias B y C), pero la app hoy permite publicar camionetas, vans, furgones, camiones y más. O el abogado amplía los Términos, o Claude limita la app a autos y motos.
-- [ ] **Garantía con tarjeta de crédito (cláusulas 8 a 10).** Tus Términos piden bloquear un monto en la tarjeta (preautorización) y cobrarlo solo si hay daños acreditados. **Checkout Pro de Mercado Pago no permite preautorizar.** Opciones:
-  1. Pasar a la integración "Checkout API" de Mercado Pago (formulario de tarjeta dentro de la app, con captura diferida). Hay que confirmar con Mercado Pago que lo habilitan para esta actividad y cuántos días dura el bloqueo, que suele ser menor que un arriendo mensual.
-  2. Cobrar la garantía como un depósito aparte y devolverlo al terminar.
-  3. Por ahora, sin garantía por la app (lo que hay hoy: "se coordina con el propietario").
+- [x] **Alcance:** todos los tipos de vehículo (decidido el 2026-10-01). Los Términos ya se ampliaron.
+- [ ] **Garantía con tarjeta de crédito (cláusulas 8 a 10).** Quieres que quede una tarjeta de crédito vinculada por seguridad, sin cobrarla por adelantado. Lo que permite eso es una **preautorización**: se "congela" un monto en el cupo de la tarjeta sin cobrarlo, y solo se cobra si hay un daño acreditado; si no, se libera. Para hacerlo hay que cambiar a la integración "Checkout API" de Mercado Pago. Antes de que Claude la programe, pregúntale a tu ejecutivo de Mercado Pago:
+  1. ¿Permiten **reservar fondos (preautorizar) en tarjetas de crédito en Chile** para una plataforma de arriendo de vehículos entre personas?
+  2. ¿Cuántos días dura como máximo la reserva de fondos antes de liberarse sola?
+  3. ¿Se puede **capturar solo una parte** del monto reservado y liberar el resto?
+  4. ¿Se puede **guardar la tarjeta** del cliente para volver a preautorizar en arriendos largos (por ejemplo, mensuales)?
+  5. ¿Qué comisión cobran por una preautorización que no se captura?
 
-  Decide con el abogado y avísale a Claude.
-- [ ] **Horas de entrega y devolución.** La cláusula 6 pide "fechas y horas exactas". Hoy la reserva es por días completos. Confirma si quieres que Claude agregue la elección de hora.
+  Con esas respuestas, Claude implementa la garantía.
+- [x] **Horas:** el precio se calcula por días y el propietario propone la hora de entrega y de devolución al aceptar (hecho).
+- [x] **Casilla C obligatoria** (hecho; pendiente de validación del abogado).
+- [ ] **Derecho de retracto (cláusula 20).** Por la Ley del Consumidor, quien contrata por internet puede arrepentirse dentro de **10 días** desde que paga, siempre que el servicio no haya empezado, y recibir su dinero de vuelta. Ejemplo: alguien paga hoy un arriendo para dentro de 3 semanas y a los 5 días se arrepiente: tiene derecho a la devolución. La ley permite excluir el retracto en algunos servicios, pero solo si se informa de forma destacada antes de pagar. Decide con el abogado:
+  - **(a)** Dar retracto. Claude agrega el botón "Arrepentirme" en reservas pagadas, dentro de 10 días y antes del inicio, y la devolución por Mercado Pago.
+  - **(b)** Excluirlo. Claude agrega el aviso destacado antes de pagar, con el texto que te dé el abogado.
+  - En ambos casos falta además tu **política de cancelación** normal (qué pasa si cancelan después de esos 10 días o si cancela el propietario).
+
 - [ ] **Marca y dominio.**
   - Revisa si `rue.cl` está disponible en https://www.nic.cl (aprox. $10.000 al año).
   - Evalúa registrar la marca "RUÉ" en https://www.inapi.cl (clases 39, 9 y 42).

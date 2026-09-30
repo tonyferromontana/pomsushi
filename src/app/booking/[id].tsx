@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
+import { TimeField } from '@/components/DateRangeField';
 import { Stars } from '@/components/forms';
 import { ReportSheet } from '@/components/ReportSheet';
 import {
@@ -178,6 +179,9 @@ export default function BookingScreen() {
   const [sendingReview, setSendingReview] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const [pickupTime, setPickupTime] = useState('10:00');
+  const [returnTime, setReturnTime] = useState('10:00');
 
   // Si la otra parte cambia el estado, se actualiza solo.
   useEffect(() => {
@@ -267,7 +271,35 @@ export default function BookingScreen() {
     }
   };
 
+  const hhmm = (t: string | null) => (t ? t.slice(0, 5) : null);
+
+  // Aceptar: el propietario propone la hora de entrega y de devolución.
+  const accept = async () => {
+    setBusy('aceptada');
+    setActionError(null);
+    try {
+      const { error: err } = await supabase.rpc('accept_booking', {
+        p_booking_id: b.id,
+        p_pickup_time: pickupTime,
+        p_return_time: returnTime,
+      });
+      if (err) throw err;
+      track('booking_accepted');
+      setAcceptOpen(false);
+      await reload();
+    } catch (e) {
+      logError('accept_booking', e);
+      setActionError(friendlyError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const run = async (a: Action) => {
+    if (a.to === 'aceptada') {
+      setAcceptOpen(true);
+      return;
+    }
     const go = async () => {
       setBusy(a.to);
       setActionError(null);
@@ -304,6 +336,7 @@ export default function BookingScreen() {
         <Text variant="h1">{vehicleTitle}</Text>
         <Text color="textSecondary">
           {dateRange(b.start_date, b.end_date)} · {plural(b.days, 'día', 'días')}
+          {b.pickup_time && b.return_time ? ` · entrega ${hhmm(b.pickup_time)}, devolución ${hhmm(b.return_time)}` : ''}
           {b.purpose ? ` · ${purposeLabel(b.purpose)}` : ''}
         </Text>
         {step ? <Notice tone={status.tone}>{step}</Notice> : null}
@@ -360,6 +393,25 @@ export default function BookingScreen() {
           {actionError ? <Notice tone="error">{actionError}</Notice> : null}
         </View>
       ) : null}
+
+      {acceptOpen ? (
+        <Card style={{ gap: space.md, marginTop: space.xl }}>
+          <Text variant="h3">¿A qué hora entregas y recibes el vehículo?</Text>
+          <Text variant="bodySmall" color="textSecondary">
+            El arrendatario verá estas horas antes de pagar. El precio se calcula por días completos.
+          </Text>
+          <Text variant="caption" color="textSecondary">
+            Entrega el {shortDate(b.start_date)} · devolución el {shortDate(b.end_date)}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: space.md }}>
+            <TimeField label="Hora de entrega" value={pickupTime} onChange={setPickupTime} />
+            <TimeField label="Hora de devolución" value={returnTime} onChange={setReturnTime} />
+          </View>
+          <Button label="Aceptar con estas horas" onPress={accept} loading={busy === 'aceptada'} />
+          <Button label="Volver" variant="ghost" onPress={() => setAcceptOpen(false)} />
+        </Card>
+      ) : null}
+
 
       <SectionHeader title={role === 'owner' ? 'Arrendatario' : 'Propietario'} />
       <Card style={styles.personRow}>

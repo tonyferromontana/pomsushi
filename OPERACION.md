@@ -204,7 +204,7 @@ update public.bookings set status = 'cancelada' where id = '<id-de-la-reserva>';
 ## 7 b. Comunicar datos de un arrendatario a un arrendador o abogado (cláusulas 17 y 18)
 
 Solo si:
-- El arrendatario marcó la **casilla C** en esa reserva (o existe otra base legal, por ejemplo una orden judicial).
+- El arrendatario aceptó la **casilla C** en esa reserva (desde la versión 2026-10-01 es obligatoria para reservar, así que todas las reservas nuevas la tienen), o existe otra base legal, por ejemplo una orden judicial.
 - Hay **antecedentes verificables**: actas, fotos, chat o denuncia.
 - El solicitante acreditó su identidad y su calidad de arrendador o de abogado.
 
