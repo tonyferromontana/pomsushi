@@ -6,6 +6,14 @@ create or replace function pg_temp.as_user(p uuid) returns void language plpgsql
 begin
   perform set_config('request.jwt.claim.sub', coalesce(p::text, ''), false);
 end $$;
+create or replace function pg_temp.confirm_checkin(p_booking uuid) returns void language plpgsql as $$
+declare me text := current_setting('request.jwt.claim.sub', true); r uuid;
+begin
+  select renter_id into r from public.bookings where id = p_booking;
+  perform set_config('request.jwt.claim.sub', r::text, false);
+  perform public.confirm_handover((select id from public.booking_handovers where booking_id = p_booking and kind = 'entrega' order by created_at desc limit 1));
+  perform set_config('request.jwt.claim.sub', me, false);
+end $$;
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('40000000-0000-0000-0000-00000000000a', 'o3@test.cl', '{"display_name":"Owner3"}'),
@@ -115,6 +123,7 @@ begin
     raise exception 'FALLA: aceptó fotos de otra carpeta';
   exception when invalid_parameter_value then null; end;
   perform public.submit_handover(bid, 'entrega', 12000, 100, 'Sin daños', array[bid::text || '/frente.jpg']);
+  perform pg_temp.confirm_checkin(bid);
   perform public.transition_booking(bid, 'en_curso');
   begin
     perform public.transition_booking(bid, 'devuelta');
@@ -215,8 +224,7 @@ begin
   begin
     perform public.transition_booking(bid, 'aceptada');
     raise exception 'FALLA: se aceptó sin proponer horas';
-  exception when raise_exception then
-    if sqlerrm like 'FALLA%' then raise; end if;
+  exception when insufficient_privilege then null;  -- desde 0009 solo se acepta con accept_booking / accept_offer
   end;
   b := public.accept_booking(bid, '09:30', '19:00');
   if b.status <> 'aceptada' or b.pickup_time <> '09:30' or b.return_time <> '19:00' then

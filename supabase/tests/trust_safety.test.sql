@@ -6,6 +6,14 @@ create or replace function pg_temp.as_user(p uuid) returns void language plpgsql
 begin
   perform set_config('request.jwt.claim.sub', coalesce(p::text, ''), false);
 end $$;
+create or replace function pg_temp.confirm_checkin(p_booking uuid) returns void language plpgsql as $$
+declare me text := current_setting('request.jwt.claim.sub', true); r uuid;
+begin
+  select renter_id into r from public.bookings where id = p_booking;
+  perform set_config('request.jwt.claim.sub', r::text, false);
+  perform public.confirm_handover((select id from public.booking_handovers where booking_id = p_booking and kind = 'entrega' order by created_at desc limit 1));
+  perform set_config('request.jwt.claim.sub', me, false);
+end $$;
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-00000000000a', 'o2@test.cl', '{"display_name":"Owner2","terms_version":"2026-10-01"}'),
@@ -122,6 +130,7 @@ begin
     if sqlerrm like 'FALLA%' then raise; end if;
   end;
   perform public.submit_handover(bid, 'entrega', 1000, 100, 'ok', '{}');
+  perform pg_temp.confirm_checkin(bid);
   perform public.transition_booking(bid, 'en_curso');
   perform public.submit_handover(bid, 'devolucion', 1300, 90, 'ok', '{}');
   perform public.transition_booking(bid, 'devuelta');

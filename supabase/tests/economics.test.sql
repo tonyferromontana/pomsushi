@@ -6,6 +6,14 @@ create or replace function pg_temp.as_user(p uuid) returns void language plpgsql
 begin
   perform set_config('request.jwt.claim.sub', coalesce(p::text, ''), false);
 end $$;
+create or replace function pg_temp.confirm_checkin(p_booking uuid) returns void language plpgsql as $$
+declare me text := current_setting('request.jwt.claim.sub', true); r uuid;
+begin
+  select renter_id into r from public.bookings where id = p_booking;
+  perform set_config('request.jwt.claim.sub', r::text, false);
+  perform public.confirm_handover((select id from public.booking_handovers where booking_id = p_booking and kind = 'entrega' order by created_at desc limit 1));
+  perform set_config('request.jwt.claim.sub', me, false);
+end $$;
 create or replace function pg_temp.as_server(p boolean) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.role', case when p then 'service_role' else '' end, false);
@@ -240,6 +248,7 @@ do $$
 declare bid uuid := current_setting('rue.eco1')::uuid; po public.payouts;
 begin
   perform public.submit_handover(bid, 'entrega', 1000, 100, 'ok', '{}');
+  perform pg_temp.confirm_checkin(bid);
   perform public.transition_booking(bid, 'en_curso');
   if exists (select 1 from public.payouts where booking_id = bid) then
     raise exception 'FALLA: se creó el payout antes de la devolución';

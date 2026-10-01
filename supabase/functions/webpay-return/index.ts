@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
 
     const { data: payment, error } = await db
       .from('payments')
-      .select('id, booking_id, amount_clp, buy_order, environment, status')
+      .select('id, booking_id, extension_id, amount_clp, buy_order, environment, status')
       .eq('provider', 'webpay')
       .eq('preference_id', params.token)
       .maybeSingle();
@@ -133,26 +133,38 @@ Deno.serve(async (req) => {
 
     let result: string = 'amount_mismatch';
     if (outcome === 'approved') {
-      const { data, error: e } = await db.rpc('confirm_booking_payment', {
-        p_booking_id: payment.booking_id,
-        p_provider_payment_id: payment.buy_order,
-        p_amount_clp: payment.amount_clp,
-        p_environment: payment.environment,
-        p_provider: 'webpay',
-      });
+      // Pago de una extensión o de la reserva: cada uno con su propia confirmación en la base.
+      const { data, error: e } = payment.extension_id
+        ? await db.rpc('confirm_extension_payment', {
+            p_extension_id: payment.extension_id,
+            p_provider_payment_id: payment.buy_order,
+            p_amount_clp: payment.amount_clp,
+            p_environment: payment.environment,
+            p_provider: 'webpay',
+          })
+        : await db.rpc('confirm_booking_payment', {
+            p_booking_id: payment.booking_id,
+            p_provider_payment_id: payment.buy_order,
+            p_amount_clp: payment.amount_clp,
+            p_environment: payment.environment,
+            p_provider: 'webpay',
+          });
       if (e) throw e;
       result = String(data);
     }
 
     if (result === 'already_confirmed') {
-      // ¿La reserva ya estaba pagada con OTRA transacción? Entonces este es un pago doble y se anula.
-      const { data: others, error: oErr } = await db
+      // ¿Ya estaba pagada con OTRA transacción? Entonces este es un pago doble y se anula.
+      let othersQuery = db
         .from('payments')
         .select('id')
         .eq('booking_id', payment.booking_id)
         .eq('status', 'approved')
-        .neq('id', payment.id)
-        .limit(1);
+        .neq('id', payment.id);
+      othersQuery = payment.extension_id
+        ? othersQuery.eq('extension_id', payment.extension_id)
+        : othersQuery.is('extension_id', null);
+      const { data: others, error: oErr } = await othersQuery.limit(1);
       if (oErr) throw oErr;
       result = others && others.length > 0 ? 'double_payment' : 'already_confirmed';
     }
