@@ -10,6 +10,7 @@
 - **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Transbank, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
 - Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
 - **Configuración económica del MVP implementada (migración 0008, 2026-10-01):** comisiones versionadas 15 %/8 %, garantías por tipo fijadas por RUÉ, snapshot de precio por reserva, ledger inmutable, GMV/take rate, payouts T+2 con estados, domain events. **IVA pendiente de contador** (no se asume neto ni bruto). Ver §6 y §13.17.
+- **ETAPA ACTUAL: beta privada (2026-10-01).** Sin funcionalidades nuevas. El dueño sigue `BETA.md` (cuentas Supabase/Expo/Apple + variables + red en el entorno). Al abrir una sesión con esas variables, ejecutar el **runbook de §15**.
 - **Marketplace transaccional completo (migración 0009, 2026-10-01): ver §14.** Negociación tipo inDrive (ofertas con mínimo de RUÉ, 3 rondas), datos de contacto ocultos y señales de pago por fuera marcadas para revisión, contrato digital con hash, check-in/out confirmado por ambas partes con daños estructurados, extensiones pagadas por Webpay, trust layer y relación repetida en el snapshot.
 - **Arquitectura de negocio y salida (2026-10-01): ver §13.** Es la definición vigente del modelo económico y reemplaza cualquier supuesto anterior contradictorio. Comisión propietario **15 %**, fee arrendatario **8 %**, garantía la determina RUÉ (no el propietario), payout T+2 días hábiles. Contradicciones con el código actual y plan: §13.17.
 - **Decisiones del dueño (2026-10-01):** todos los tipos de vehículo; precio por días + el arrendador propone hora de entrega y devolución al aceptar; casilla C obligatoria. Pagos: **solo Webpay**, con cuotas. Pendientes: garantía (captura diferida u Oneclick de Transbank, esperando respuestas de Transbank, ver LANZAMIENTO.md) y retracto (a/b con abogado).
@@ -231,6 +232,7 @@ npx expo lint                        # obligatorio
 npm run test:db                      # migraciones + pruebas de seguridad y reservas (Postgres local)
 npm run test:functions               # pruebas + tipos de Edge Functions (Deno; npx -y deno si no está instalado)
 npm run legal                        # regenera textos legales (app + docs/) desde legal/*.md
+bash scripts/apply-migrations.sh     # aplica migraciones pendientes por HTTPS (Management API); --dry-run para ver
 npx expo start                       # abrir con Expo Go (QR)
 npx expo start --tunnel              # si el celular no está en la misma red
 npx expo start --clear               # después de cambiar .env
@@ -484,3 +486,17 @@ Producto **separado** del precio del arriendo. No inventar coberturas. Antes de 
 ### 14.9 RUÉ Pro y RUÉ Fleet (preparar, no construir)
 - Pro: menor take rate, analytics, pricing, multi-vehículo, calendario, fast payout, soporte prioritario. Camino: tasas por tier como nueva dimensión de `economic_config_versions` (o tabla de tasas por segmento) resuelta en `price_booking`; analytics desde `domain_events`/`vehicle_trust`.
 - Fleet: `organizations`, `organization_members` (roles owner/admin/operator/finance/viewer), `vehicles.organization_id` nullable, operadores que hacen check-in por la organización. Hoy nada asume un vehículo por usuario; los datos legales no están en `profiles` (están en `profile_private`), así que una organización puede tener sus propios datos legales. No construir un ERP.
+
+## 15. Runbook de la beta privada (ejecutar cuando existan las variables de `BETA.md`)
+
+Variables esperadas: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_PROJECT_REF`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `EXPO_TOKEN`, `EXPO_APPLE_TEAM_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_API_KEY_P8`. Nunca imprimirlas en logs ni commitearlas.
+
+1. Red: `curl -s -o /dev/null -w '%{http_code}' https://api.supabase.com` (y expo.dev). Si da 000, pedir al dueño el acceso de red (BETA.md paso 5).
+2. Supabase: `bash scripts/apply-migrations.sh --dry-run` → si el proyecto no está vacío y no hay registro de migraciones, **detenerse y preguntar** (no reaplicar). Luego sin `--dry-run`.
+3. `update platform_settings set value = to_jsonb('<EXPO_PUBLIC_SUPABASE_URL>'::text) where key = 'supabase_url'` (activa push). Verificar `cron.job` (3 jobs: rue-expire-bookings, rue-expire-vehicle-verifications, rue-promote-payouts), extensiones pg_cron/pg_net, buckets (vehicle-photos, documents, handovers), publicación realtime.
+4. Funciones: `npx supabase functions deploy webpay-create webpay-return push-dispatch delete-account --project-ref $SUPABASE_PROJECT_REF --use-api` y `npx supabase secrets set TBK_ENVIRONMENT=test --project-ref $SUPABASE_PROJECT_REF`. `verify_jwt` sale de `supabase/config.toml`.
+5. Expo: `npx eas-cli init --non-interactive --force` (escribe `extra.eas.projectId`/`owner` en app.json → commitear). Variables públicas a EAS: `npx eas-cli env:create --environment preview --environment production --name EXPO_PUBLIC_SUPABASE_URL --value "$EXPO_PUBLIC_SUPABASE_URL" --visibility plaintext --non-interactive` (ídem ANON_KEY). Los perfiles de `eas.json` leen `environment` preview/production.
+6. Android: `npx eas-cli build --platform android --profile preview --non-interactive --no-wait` → link del APK para el dueño.
+7. iOS: escribir `EXPO_ASC_API_KEY_P8` a un archivo temporal fuera del repo (convertir `\n` literales a saltos de línea) y exportar `EXPO_ASC_API_KEY_PATH`; `npx eas-cli build --platform ios --profile production --non-interactive`. El dueño crea la app en App Store Connect (Bundle ID `cl.rue.app`; si Apple dice que el Bundle ID está tomado, usar otro y avisar) y entrega el **Apple ID numérico** de la app → `submit.production.ios.ascAppId` en eas.json → `npx eas-cli submit --platform ios --profile production --latest --non-interactive`. Agregar al dueño como tester interno en TestFlight.
+8. E2E contra el proyecto real (dos cuentas de prueba creadas por la API de Auth, sin confirmar correo): publicar, buscar, ofertar bajo el mínimo (debe fallar), contraoferta, cuarta ronda (debe fallar), aceptar, `webpay-create` → completar el formulario de integración con Playwright y la tarjeta de prueba → verificar `confirmada` solo tras el commit, pago rechazado, actas con confirmación de ambos, `en_curso`, devolución, comparación, `devuelta` → payout `pending`, `finalizada`, reseña; errores de permisos, fechas ocupadas y saltos de estado. Borrar o marcar los datos de prueba al terminar.
+9. Informe final con el formato que pidió el dueño ("RUÉ — ESTADO DE LANZAMIENTO").

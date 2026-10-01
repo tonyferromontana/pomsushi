@@ -8,6 +8,7 @@ Marketplace de activos de movilidad para Chile: autos, motos, camionetas, vans, 
 - Pagos: Webpay Plus de Transbank (con cuotas) vía Edge Functions (`supabase/functions/`)
 
 - Memoria técnica (arquitectura, reglas, estados de reserva, backlog): [`CLAUDE.md`](./CLAUDE.md)
+- **Beta privada (instalar en el teléfono): [`BETA.md`](./BETA.md)**
 - Lista de tareas para lanzar: [`LANZAMIENTO.md`](./LANZAMIENTO.md)
 - Manual del administrador: [`OPERACION.md`](./OPERACION.md)
 - Textos legales (fuente): [`legal/`](./legal) · sitio web generado: [`docs/`](./docs)

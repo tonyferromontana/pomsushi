@@ -266,7 +266,7 @@ export default function VehicleScreen() {
         <View style={{ gap: space.xs }}>
           <Row label="Precio por día" value={clp(v.daily_price_clp)} />
           {v.weekly_price_clp ? <Row label="Precio por semana" value={clp(v.weekly_price_clp)} /> : null}
-          {data.guarantee ? <Row label="Garantía (no se suma al total)" value={clp(data.guarantee)} /> : null}
+          {data.guarantee ? <Row label="Garantía referencial (aún no se cobra)" value={clp(data.guarantee)} /> : null}
           {v.plate ? <Row label="Patente" value={v.plate} /> : null}
           <Row label="Kilometraje" value={v.km_per_day ? `${v.km_per_day} km por día` : 'Libre'} />
           <Row label="Combustible" value={v.fuel_policy === 'lleno' ? 'Se devuelve con estanque lleno' : 'Se devuelve con el mismo nivel'} />
@@ -392,8 +392,8 @@ export default function VehicleScreen() {
                   <Row label="Total" value={clp(quote.total_clp)} strong />
                   {quote.deposit_clp > 0 ? (
                     <Text variant="caption" color="textSecondary">
-                      Garantía de {clp(quote.deposit_clp)}, definida por RUÉ para este tipo de vehículo. No está incluida en el
-                      total ni se cobra en este pago.
+                      Garantía referencial de {clp(quote.deposit_clp)}, definida por RUÉ para este tipo de vehículo. Durante la
+                      beta no se cobra ni se bloquea en tu tarjeta, y no está incluida en el total.
                     </Text>
                   ) : null}
                   <Text variant="caption" color="textSecondary">
@@ -403,10 +403,14 @@ export default function VehicleScreen() {
                 </View>
               ) : null}
               {v.insurance_info ? (
-                <Notice tone="info">Seguro declarado por el propietario: {v.insurance_info}</Notice>
+                <Notice tone="info">
+                  Seguro declarado por el propietario (RUÉ no lo verifica): {v.insurance_info}. RUÉ no ofrece seguro ni
+                  protección propia.
+                </Notice>
               ) : (
                 <Notice tone="warning">
-                  El propietario no informó un seguro de daños. El SOAP no cubre daños al vehículo ni a terceros.
+                  El propietario no informó un seguro de daños y RUÉ no ofrece seguro ni protección propia. El SOAP no cubre
+                  daños al vehículo ni a terceros.
                 </Notice>
               )}
               {quote ? (

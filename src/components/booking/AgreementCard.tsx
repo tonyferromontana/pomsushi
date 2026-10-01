@@ -49,7 +49,7 @@ export function AgreementCard({ agreements, role }: { agreements: BookingAgreeme
                 {role === 'renter' && eco.charged_clp != null ? <Row label="Total pagado" value={clp(eco.charged_clp)} strong /> : null}
                 {role === 'owner' && eco.owner_fee_clp != null ? <Row label="Comisión RUÉ" value={`-${clp(eco.owner_fee_clp)}`} /> : null}
                 {role === 'owner' && eco.owner_payout_clp != null ? <Row label="Recibes" value={clp(eco.owner_payout_clp)} strong /> : null}
-                {eco.guarantee_clp != null ? <Row label="Garantía" value={clp(eco.guarantee_clp)} /> : null}
+                {eco.guarantee_clp != null ? <Row label="Garantía referencial (aún no se cobra)" value={clp(eco.guarantee_clp)} /> : null}
                 <Divider spacing={space.sm} />
                 <Text variant="caption" color="textSecondary">
                   Incluye vehículo, patente, fechas y horas, kilometraje, combustible, lugar de entrega, montos y las

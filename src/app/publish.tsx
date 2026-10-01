@@ -528,7 +528,7 @@ export default function PublishScreen() {
           />
           {guarantee.data != null ? (
             <Notice>
-              Garantía: {clp(guarantee.data)}. La define RUÉ según el tipo de vehículo y no se suma a lo que recibes.
+              Garantía referencial: {clp(guarantee.data)}. La define RUÉ según el tipo de vehículo. Durante la beta todavía no se cobra ni se bloquea en la tarjeta del arrendatario.
             </Notice>
           ) : null}
           <Input

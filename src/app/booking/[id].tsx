@@ -579,7 +579,7 @@ export default function BookingScreen() {
             {data.payout ? <Row label="Pago a tu cuenta" value={payoutLabel(data.payout)} /> : null}
           </>
         )}
-        {b.deposit_clp > 0 ? <Row label="Garantía (no incluida en el total)" value={clp(b.deposit_clp)} /> : null}
+        {b.deposit_clp > 0 ? <Row label="Garantía referencial (aún no se cobra)" value={clp(b.deposit_clp)} /> : null}
       </View>
 
       {b.status === 'confirmada' || b.status === 'en_curso' || data.handovers.length > 0 ? (

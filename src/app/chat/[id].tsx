@@ -109,7 +109,7 @@ export default function ChatScreen() {
           <EmptyState
             icon="chatbubble-outline"
             title="Conversen aquí"
-            body="Coordinen la entrega y la devolución aquí. Los teléfonos y correos se muestran recién cuando la reserva está pagada, y nunca se paga por fuera de RUÉ: fuera de la app no hay garantía, contrato ni soporte."
+            body="Coordinen la entrega y la devolución aquí. Antes del pago ocultamos teléfonos y correos. No pagues por fuera de RUÉ: fuera de la app no hay pago con Webpay, contrato, actas ni soporte."
           />
         ) : (
           <FlatList
