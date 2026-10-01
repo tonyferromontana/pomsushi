@@ -18,6 +18,7 @@ import {
   Row,
   Screen,
   SectionHeader,
+  Segmented,
   Text,
 } from '@/components/ui';
 import { Checkbox } from '@/components/forms';
@@ -29,13 +30,19 @@ import { attributeSummary, PURPOSES, purposeLabel, vehicleTypeLabel } from '@/li
 import { useAuth } from '@/lib/auth';
 import { friendlyError, logError } from '@/lib/errors';
 import { guaranteeForType } from '@/lib/guarantee';
-import { clp, memberSince, plural } from '@/lib/format';
+import { clp, memberSince, plural, thousands, toInt } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { BookingPurpose, Profile, Quote, Vehicle, VehiclePhoto as Photo } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { colors, photoAspect, radius, space } from '@/theme';
 
-type Reputation = { rating_avg: number | null; rating_count: number; completed_bookings: number };
+/** user_trust(): reputación pública calculada por el servidor (sin datos privados). */
+type Reputation = {
+  rating_avg: number | null;
+  rating_count: number;
+  completed_as_owner: number;
+  response_time_hours: number | null;
+};
 type Detail = { vehicle: Vehicle; photos: Photo[]; owner: Profile | null; reputation: Reputation | null; guarantee: number | null };
 
 async function loadDetail(id: string): Promise<Detail> {
@@ -44,7 +51,7 @@ async function loadDetail(id: string): Promise<Detail> {
   const [photos, owner, rep, guarantee] = await Promise.all([
     supabase.from('vehicle_photos').select('*').eq('vehicle_id', id).order('position'),
     supabase.from('profiles').select('*').eq('id', vehicle.owner_id).maybeSingle(),
-    supabase.rpc('user_reputation', { p_user_id: vehicle.owner_id }),
+    supabase.rpc('user_trust', { p_user_id: vehicle.owner_id }),
     guaranteeForType(vehicle.vehicle_type).catch((e: unknown) => {
       logError('vehicle.guarantee', e);
       return null;
@@ -79,6 +86,10 @@ export default function VehicleScreen() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptData, setAcceptData] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  // Negociación: la persona escribe una oferta por día; el servidor la valida y la cotiza.
+  const [priceMode, setPriceMode] = useState<'published' | 'offer'>('published');
+  const [offerText, setOfferText] = useState('');
+  const [appliedOffer, setAppliedOffer] = useState<number | null>(null);
 
   useEffect(() => {
     if (data) track('vehicle_view', { vehicle_type: data.vehicle.vehicle_type }, { vehicleId: data.vehicle.id });
@@ -86,13 +97,14 @@ export default function VehicleScreen() {
 
   // El precio lo calcula SIEMPRE el servidor. La cotización queda asociada a las fechas pedidas.
   const canQuote = !!start && !!end && !!data && data.vehicle.owner_id !== userId;
-  const quoteKey = canQuote ? `${params.id}|${start}|${end}` : null;
+  const offer = priceMode === 'offer' ? appliedOffer : null;
+  const quoteKey = canQuote ? `${params.id}|${start}|${end}|${offer ?? ''}` : null;
 
   useEffect(() => {
     if (!quoteKey || !start || !end) return;
     let alive = true;
     supabase
-      .rpc('quote_booking', { p_vehicle_id: params.id, p_start: start, p_end: end })
+      .rpc('quote_booking', { p_vehicle_id: params.id, p_start: start, p_end: end, p_offer_daily_clp: offer })
       .then(({ data: q, error: err }) => {
         if (!alive) return;
         if (err) {
@@ -106,12 +118,19 @@ export default function VehicleScreen() {
     return () => {
       alive = false;
     };
-  }, [quoteKey, start, end, params.id]);
+  }, [quoteKey, start, end, params.id, offer]);
 
   const currentQuote = quoteKey && quoteResult?.key === quoteKey ? quoteResult : null;
   const quote = currentQuote?.quote ?? null;
   const quoteError = currentQuote?.error ?? null;
   const quoting = !!quoteKey && !currentQuote;
+  // La guía de precio (recomendado) se mantiene visible aunque la oferta sea rechazada.
+  const [guide, setGuide] = useState<{ key: string; low: number; high: number; published: number } | null>(null);
+  const guideKey = `${params.id}|${start}|${end}`;
+  if (quote && (guide?.key !== guideKey || guide.low !== quote.recommended_daily_low_clp)) {
+    setGuide({ key: guideKey, low: quote.recommended_daily_low_clp, high: quote.recommended_daily_high_clp, published: quote.published_daily_clp });
+  }
+  const currentGuide = guide?.key === guideKey ? guide : null;
 
   if (loading && !data) return <LoadingState />;
   if (error || !data) {
@@ -140,9 +159,10 @@ export default function VehicleScreen() {
         p_terms_version: TERMS_VERSION,
         p_accept_terms: acceptTerms,
         p_accept_data_sharing: acceptData,
+        p_offer_daily_clp: quote.offer_daily_clp,
       });
       if (err) throw err;
-      track('booking_requested', { days: quote.days, vehicle_type: v.vehicle_type });
+      track('booking_requested', { days: quote.days, vehicle_type: v.vehicle_type, offer: quote.offer_daily_clp !== null });
       router.replace({ pathname: '/booking/[id]', params: { id: bookingId as string } });
     } catch (e) {
       logError('request_booking', e);
@@ -179,7 +199,7 @@ export default function VehicleScreen() {
         )}
       </View>
       <Button
-        label="Solicitar"
+        label={quote?.offer_daily_clp ? 'Enviar oferta' : 'Solicitar'}
         onPress={request}
         loading={sending}
         disabled={!quote || quoting || !acceptTerms || !acceptData}
@@ -278,8 +298,11 @@ export default function VehicleScreen() {
                   {data.reputation && data.reputation.rating_count > 0 && data.reputation.rating_avg !== null
                     ? `★ ${data.reputation.rating_avg} (${data.reputation.rating_count}) · `
                     : ''}
-                  {data.reputation?.completed_bookings
-                    ? `${plural(data.reputation.completed_bookings, 'arriendo', 'arriendos')} · `
+                  {data.reputation?.completed_as_owner
+                    ? `${plural(data.reputation.completed_as_owner, 'arriendo', 'arriendos')} · `
+                    : ''}
+                  {data.reputation?.response_time_hours != null
+                    ? `responde en ${data.reputation.response_time_hours < 1 ? 'menos de 1 hora' : `~${Math.round(data.reputation.response_time_hours)} h`} · `
                     : ''}
                   En RUÉ desde {memberSince(owner.created_at)}
                 </Text>
@@ -322,11 +345,48 @@ export default function VehicleScreen() {
                 maxLength={1000}
               />
 
+              {canQuote ? (
+                <View style={{ gap: space.sm }}>
+                  <Segmented
+                    options={[
+                      { value: 'published', label: 'Precio publicado' },
+                      { value: 'offer', label: 'Hacer una oferta' },
+                    ]}
+                    value={priceMode}
+                    onChange={setPriceMode}
+                  />
+                  {priceMode === 'offer' ? (
+                    <View style={{ gap: space.sm }}>
+                      <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'flex-end' }}>
+                        <View style={{ flex: 1 }}>
+                          <Input
+                            label="Tu oferta por día (CLP)"
+                            placeholder={currentGuide ? thousands(String(currentGuide.low)) : '50.000'}
+                            keyboardType="number-pad"
+                            value={offerText}
+                            onChangeText={(t) => setOfferText(thousands(t))}
+                          />
+                        </View>
+                        <Button label="Calcular" variant="secondary" small onPress={() => setAppliedOffer(toInt(offerText))} />
+                      </View>
+                      {currentGuide ? (
+                        <Text variant="caption" color="textSecondary">
+                          Publicado: {clp(currentGuide.published)} por día · rango recomendado {clp(currentGuide.low)} – {clp(currentGuide.high)}.
+                          El propietario puede aceptar, rechazar o hacerte una contraoferta.
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
               {quoting ? <Text variant="bodySmall" color="textSecondary">Calculando…</Text> : null}
               {quoteError ? <Notice tone="warning">{quoteError}</Notice> : null}
               {quote ? (
                 <View style={{ gap: space.xs }}>
-                  <Row label={`Arriendo · ${plural(quote.days, 'día', 'días')}`} value={clp(quote.rental_clp)} />
+                  <Row
+                    label={`Arriendo · ${plural(quote.days, 'día', 'días')}${quote.offer_daily_clp ? ` a ${clp(quote.offer_daily_clp)}` : ''}`}
+                    value={clp(quote.rental_clp)}
+                  />
                   {quote.renter_fee_clp > 0 ? <Row label="Cargo de servicio" value={clp(quote.renter_fee_clp)} /> : null}
                   <Divider spacing={space.sm} />
                   <Row label="Total" value={clp(quote.total_clp)} strong />

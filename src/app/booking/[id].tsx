@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AgreementCard } from '@/components/booking/AgreementCard';
+import { ExtensionCard } from '@/components/booking/ExtensionCard';
+import { NegotiationCard } from '@/components/booking/NegotiationCard';
 import { TimeField } from '@/components/DateRangeField';
 import { Stars } from '@/components/forms';
 import { ReportSheet } from '@/components/ReportSheet';
@@ -29,7 +32,18 @@ import { BOOKING_FLOW, BOOKING_STATUS, purposeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { clp, dateRange, plural, shortDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import type { Booking, BookingEvent, BookingStatus, Handover, Payout, Profile } from '@/lib/types';
+import type {
+  Booking,
+  BookingAgreement,
+  BookingEvent,
+  BookingExtension,
+  BookingOffer,
+  BookingStatus,
+  Handover,
+  HandoverComparison,
+  Payout,
+  Profile,
+} from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { colors, radius, space } from '@/theme';
 
@@ -43,6 +57,10 @@ type Detail = {
   paidWith: { payment_type: string | null; installments: number | null } | null;
   payout: Pick<Payout, 'status' | 'eligible_on' | 'paid_at'> | null;
   handovers: (Handover & { photoUrls: string[] })[];
+  offers: BookingOffer[];
+  extensions: BookingExtension[];
+  agreements: BookingAgreement[];
+  comparison: HandoverComparison | null;
 };
 
 async function loadDetail(id: string, userId: string): Promise<Detail> {
@@ -50,7 +68,7 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
   if (error) throw error;
   const booking = data as Booking;
   const otherId = booking.owner_id === userId ? booking.renter_id : booking.owner_id;
-  const [other, events, vehicle, review, payments, payout] = await Promise.all([
+  const [other, events, vehicle, review, payments, payout, offers, extensions, agreements] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', otherId).maybeSingle(),
     supabase.from('booking_events').select('*').eq('booking_id', id).order('created_at'),
     supabase.rpc('booking_vehicle', { p_booking_id: id }),
@@ -58,6 +76,9 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     supabase.from('payments').select('status, payment_type, installments').eq('booking_id', id).in('status', ['pending', 'in_process', 'approved']),
     // RLS: solo el propietario ve su pago; para el arrendatario vuelve vacío.
     supabase.from('payouts').select('status, eligible_on, paid_at').eq('booking_id', id).maybeSingle(),
+    supabase.from('booking_offers').select('*').eq('booking_id', id).order('round_number'),
+    supabase.from('booking_extensions').select('*').eq('booking_id', id).order('created_at'),
+    supabase.from('booking_agreements').select('*').eq('booking_id', id).order('version'),
   ]);
   const handoverRes = await supabase.from('booking_handovers').select('*').eq('booking_id', id).order('created_at');
   if (handoverRes.error) logError('booking.handovers', handoverRes.error);
@@ -71,12 +92,22 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     signed = Object.fromEntries((res.data ?? []).filter((r) => r.signedUrl).map((r) => [r.path, r.signedUrl]));
   }
   const handovers = rawHandovers.map((h) => ({ ...h, photoUrls: h.photo_paths.map((p) => signed[p]).filter(Boolean) }));
+  // Antes / después: lo calcula el servidor cuando hay actas.
+  let comparison: HandoverComparison | null = null;
+  if (rawHandovers.length > 0) {
+    const cmp = await supabase.rpc('handover_comparison', { p_booking_id: id });
+    if (cmp.error) logError('booking.comparison', cmp.error);
+    comparison = (cmp.data as HandoverComparison | null) ?? null;
+  }
   if (events.error) throw events.error;
   if (other.error) logError('booking.other', other.error);
   if (vehicle.error) logError('booking.vehicle', vehicle.error);
   if (review.error) logError('booking.review', review.error);
   if (payments.error) logError('booking.payments', payments.error);
   if (payout.error) logError('booking.payout', payout.error);
+  if (offers.error) logError('booking.offers', offers.error);
+  if (extensions.error) logError('booking.extensions', extensions.error);
+  if (agreements.error) logError('booking.agreements', agreements.error);
   const v = (vehicle.data as { title: string }[] | null)?.[0];
   return {
     booking,
@@ -88,6 +119,10 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     paidWith: (payments.data ?? []).find((p) => p.status === 'approved') ?? null,
     payout: (payout.data as Detail['payout']) ?? null,
     handovers,
+    offers: (offers.data ?? []) as BookingOffer[],
+    extensions: (extensions.data ?? []) as BookingExtension[],
+    agreements: (agreements.data ?? []) as BookingAgreement[],
+    comparison,
   };
 }
 
@@ -167,8 +202,8 @@ function nextStepText(role: 'owner' | 'renter', b: Booking): string | null {
         : `¡Te aceptaron! Paga${until} para confirmar tu reserva.`;
     case 'confirmada':
       return role === 'owner'
-        ? `Reserva pagada. Entrega el vehículo el ${shortDate(b.start_date)}.`
-        : `Reserva confirmada. Retiras el ${shortDate(b.start_date)}.`;
+        ? `Reserva pagada. Entrega el vehículo el ${shortDate(b.start_date)}: completa el acta y pide al arrendatario que la confirme.`
+        : `Reserva confirmada. Retiras el ${shortDate(b.start_date)}: revisa y confirma el acta de entrega en la app.`;
     case 'en_curso':
       return `Devolución el ${shortDate(b.end_date)}.`;
     case 'devuelta':
@@ -231,22 +266,24 @@ export default function BookingScreen() {
   const { booking: b, other, events, vehicleTitle } = data;
   const role: 'owner' | 'renter' = b.owner_id === userId ? 'owner' : 'renter';
   const status = BOOKING_STATUS[b.status];
-  const actions = actionsFor(role, b.status);
+  const pendingOffer = b.status === 'solicitada' ? data.offers.find((o) => o.status === 'pending') : undefined;
+  // Con una negociación abierta, aceptar se hace desde la tarjeta de negociación.
+  const actions = actionsFor(role, b.status).filter((a) => !(a.to === 'aceptada' && pendingOffer));
   const step = nextStepText(role, b);
   const flowIndex = BOOKING_FLOW.indexOf(b.status);
 
   // Pago con Webpay: el servidor crea la transacción con el monto de la reserva y, al volver,
   // el propio servidor la confirma con Transbank. La app solo muestra el resultado.
   // Volver a la app NO confirma nada: la confirmación llega por el webhook y se ve en tiempo real.
-  const pay = async () => {
+  const pay = async (extensionId?: string) => {
     setPaying(true);
     setActionError(null);
     setPayNotice(null);
     try {
-      track('checkout_started', { total: b.total_clp }, { bookingId: b.id, vehicleId: b.vehicle_id });
+      track('checkout_started', { total: b.total_clp, extension: !!extensionId }, { bookingId: b.id, vehicleId: b.vehicle_id });
       const redirectUrl = Linking.createURL('pago');
       const { data: res, error: err } = await supabase.functions.invoke('webpay-create', {
-        body: { booking_id: b.id, redirect_url: redirectUrl },
+        body: { booking_id: b.id, extension_id: extensionId ?? null, redirect_url: redirectUrl },
       });
       if (err) {
         const ctx = (err as { context?: Response }).context;
@@ -260,7 +297,9 @@ export default function BookingScreen() {
         const status = Linking.parse(result.url).queryParams?.status;
         setPayNotice(
           status === 'approved'
-            ? '¡Pago aprobado! Tu reserva quedó confirmada.'
+            ? extensionId
+              ? '¡Pago aprobado! Tu arriendo quedó extendido.'
+              : '¡Pago aprobado! Tu reserva quedó confirmada.'
             : status === 'cancelled'
               ? 'Anulaste el pago. Puedes intentarlo de nuevo.'
               : status === 'refunded'
@@ -300,6 +339,21 @@ export default function BookingScreen() {
   };
 
   const hhmm = (t: string | null) => (t ? t.slice(0, 5) : null);
+
+  const confirmHandover = async (handoverId: string) => {
+    setBusy('en_curso');
+    setActionError(null);
+    try {
+      const { error: err } = await supabase.rpc('confirm_handover', { p_handover_id: handoverId });
+      if (err) throw err;
+      await reload();
+    } catch (e) {
+      logError('confirm_handover', e);
+      setActionError(friendlyError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   // Aceptar: el propietario propone la hora de entrega y de devolución.
   const accept = async () => {
@@ -380,7 +434,7 @@ export default function BookingScreen() {
 
       {role === 'renter' && b.status === 'aceptada' ? (
         <View style={{ gap: space.sm, marginTop: space.xl }}>
-          <Button label={`Pagar ${clp(b.total_clp)}`} icon="card-outline" onPress={pay} loading={paying} />
+          <Button label={`Pagar ${clp(b.total_clp)}`} icon="card-outline" onPress={() => pay()} loading={paying} />
           {payNotice || data.paymentPending ? (
             <Notice tone="info">{payNotice ?? 'Tienes un pago pendiente de aprobación. Te avisaremos apenas se confirme.'}</Notice>
           ) : null}
@@ -407,6 +461,32 @@ export default function BookingScreen() {
         </View>
       ) : null}
 
+      {data.offers.length > 0 ? (
+        <View style={{ marginTop: space.xl }}>
+          <NegotiationCard
+            booking={b}
+            offers={data.offers}
+            role={role}
+            onChanged={reload}
+            onOwnerAccept={() => setAcceptOpen(true)}
+          />
+        </View>
+      ) : null}
+
+      {data.extensions.length > 0 || b.status === 'confirmada' || b.status === 'en_curso' ? (
+        <View style={{ marginTop: space.xl }}>
+          <ExtensionCard
+            booking={b}
+            extensions={data.extensions}
+            role={role}
+            onChanged={reload}
+            onPay={(extId) => void pay(extId)}
+            paying={paying}
+          />
+          {payNotice && b.status !== 'aceptada' ? <Notice tone="info">{payNotice}</Notice> : null}
+        </View>
+      ) : null}
+
       {actions.length > 0 ? (
         <View style={{ gap: space.sm, marginTop: space.xl }}>
           {actions.map((a) => (
@@ -425,7 +505,9 @@ export default function BookingScreen() {
 
       {acceptOpen ? (
         <Card style={{ gap: space.md, marginTop: space.xl }}>
-          <Text variant="h3">¿A qué hora entregas y recibes el vehículo?</Text>
+          <Text variant="h3">
+            {pendingOffer ? `Aceptar ${clp(pendingOffer.amount_clp)} por día` : '¿A qué hora entregas y recibes el vehículo?'}
+          </Text>
           <Text variant="bodySmall" color="textSecondary">
             El arrendatario verá estas horas antes de pagar. El precio se calcula por días completos.
           </Text>
@@ -520,6 +602,29 @@ export default function BookingScreen() {
                   {h.fuel_level !== null ? ` · combustible ${h.fuel_level} %` : ''}
                 </Text>
                 {h.notes ? <Text variant="bodySmall">{h.notes}</Text> : null}
+                {h.damages.length > 0 ? (
+                  <Text variant="bodySmall" color="textSecondary">
+                    Daños: {h.damages.map((d) => (d.description ? `${d.zone} (${d.description})` : d.zone)).join(' · ')}
+                  </Text>
+                ) : (
+                  <Text variant="caption" color="textSecondary">Sin daños registrados</Text>
+                )}
+                {(() => {
+                  const mineConfirmed = role === 'owner' ? h.owner_confirmed_at : h.renter_confirmed_at;
+                  const otherConfirmed = role === 'owner' ? h.renter_confirmed_at : h.owner_confirmed_at;
+                  if (mineConfirmed && otherConfirmed) return <Badge label="Confirmada por ambos" tone="success" />;
+                  if (!mineConfirmed && ['confirmada', 'en_curso', 'devuelta'].includes(b.status)) {
+                    return (
+                      <Button
+                        label="Confirmo que el acta está correcta"
+                        small
+                        loading={busy === 'en_curso'}
+                        onPress={() => confirmHandover(h.id)}
+                      />
+                    );
+                  }
+                  return <Badge label="Falta la confirmación de la otra parte" tone="warning" />;
+                })()}
                 {h.photoUrls.length > 0 ? (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
                     {h.photoUrls.map((u) => (
@@ -529,6 +634,26 @@ export default function BookingScreen() {
                 ) : null}
               </Card>
             ))}
+            {data.comparison?.check_in && data.comparison.check_out ? (
+              <Card style={{ gap: space.xs }}>
+                <Text variant="title">Antes y después</Text>
+                {data.comparison.km_driven != null ? (
+                  <Row
+                    label="Kilómetros recorridos"
+                    value={`${data.comparison.km_driven.toLocaleString('es-CL')} km${
+                      data.comparison.km_allowed != null ? ` de ${data.comparison.km_allowed.toLocaleString('es-CL')} permitidos` : ''
+                    }`}
+                  />
+                ) : null}
+                {data.comparison.fuel_delta != null ? (
+                  <Row label="Combustible o carga" value={`${data.comparison.fuel_delta > 0 ? '+' : ''}${data.comparison.fuel_delta} %`} />
+                ) : null}
+                <Row
+                  label="Daños nuevos"
+                  value={data.comparison.new_damage_zones.length > 0 ? data.comparison.new_damage_zones.join(', ') : 'Ninguno'}
+                />
+              </Card>
+            ) : null}
             {b.status === 'confirmada' || b.status === 'en_curso' ? (
               <Button
                 label={b.status === 'confirmada' ? 'Completar acta de entrega' : 'Completar acta de devolución'}
@@ -544,6 +669,12 @@ export default function BookingScreen() {
             ) : null}
           </View>
         </>
+      ) : null}
+
+      {data.agreements.length > 0 ? (
+        <View style={{ marginTop: space.xl }}>
+          <AgreementCard agreements={data.agreements} role={role} />
+        </View>
       ) : null}
 
       <SectionHeader title="Historial" />

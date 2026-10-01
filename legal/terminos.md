@@ -58,11 +58,11 @@ Solo podrán conducir las personas identificadas y aceptadas en la reserva, cuya
 
 Antes de confirmar, se mostrará una ficha con identidad de las partes; vehículo; fechas y horas exactas; modalidad diaria o mensual y su cómputo; entrega y devolución; precio total; comisión; impuestos; garantía; seguro; deducibles; kilometraje; combustible; restricciones; tarifas adicionales y cancelaciones.
 
-El precio se calcula por días completos. Al aceptar una solicitud, el arrendador propone la hora de entrega del primer día y la hora de devolución del último día; el arrendatario las conoce antes de pagar y, si no le acomodan, puede no pagar sin costo. Una vez pagada la reserva, las horas solo pueden cambiarse de común acuerdo.
+El precio se calcula por días completos. El arrendatario puede reservar al precio publicado o hacer una oferta por día. La Plataforma muestra un rango de precio recomendado y no admite ofertas bajo un mínimo que fija según criterios objetivos (por ejemplo, tipo de vehículo y precio publicado). El arrendador puede aceptar, rechazar o contraofertar, y el arrendatario puede responder, hasta el número de rondas informado. Cada oferta vence en el plazo indicado y queda registrada. El precio aceptado queda fijo para la reserva. Al aceptar una solicitud, el arrendador propone la hora de entrega del primer día y la hora de devolución del último día; el arrendatario las conoce antes de pagar y, si no le acomodan, puede no pagar sin costo. Una vez pagada la reserva, las horas solo pueden cambiarse de común acuerdo.
 
-La reserva quedará perfeccionada cuando ambas partes la acepten conforme al flujo de contratación, el pago exigido sea aprobado y la garantía sea constituida según estas condiciones. Una solicitud pendiente no equivale a una reserva confirmada. Las extensiones requerirán aceptación de ambas partes, pago adicional y mantenimiento de la garantía y cobertura.
+La reserva quedará perfeccionada cuando ambas partes la acepten conforme al flujo de contratación, el pago exigido sea aprobado y la garantía sea constituida según estas condiciones. Una solicitud pendiente no equivale a una reserva confirmada. Las extensiones requerirán aceptación de ambas partes, pago adicional y mantenimiento de la garantía y cobertura. Se solicitan desde la reserva, se calculan con la tarifa diaria acordada y solo modifican la fecha de devolución una vez pagadas, quedando registradas como anexo de la reserva.
 
-Los términos estarán disponibles para lectura, descarga y conservación antes de aceptar. La Plataforma remitirá confirmación escrita y copia de la reserva y autorizaciones. Mantendrá registro de la versión aceptada, fecha, identidad y evidencia de aceptación, aplicando medidas de seguridad y conservación proporcionales. El silencio no constituye aceptación.
+Los términos estarán disponibles para lectura, descarga y conservación antes de aceptar. Confirmado el pago, la Plataforma generará un contrato digital de la reserva, con su código de verificación, disponible para ambas partes en la aplicación, y remitirá confirmación escrita y copia de la reserva y autorizaciones. Mantendrá registro de la versión aceptada, fecha, identidad y evidencia de aceptación, aplicando medidas de seguridad y conservación proporcionales. El silencio no constituye aceptación.
 
 ## 7. Precio y comisión de la Plataforma
 
@@ -109,7 +109,7 @@ El arrendatario recibirá liquidación y comprobante. No podrá cobrarse dos vec
 
 ## 11. Entrega y devolución documentadas
 
-Antes de entregar se comprobarán identidad, licencia, pago y garantía. Las partes completarán un acta con fecha y hora, kilometraje, combustible o carga, daños previos, accesorios, documentos, llaves y fotografías o video. Ambas recibirán copia y podrán registrar observaciones. El arrendatario podrá rechazar un vehículo inseguro o sustancialmente distinto del reservado y solicitar devolución de lo pagado por servicios no prestados, sin perjuicio de otros derechos.
+Antes de entregar se comprobarán identidad, licencia, pago y garantía. Las partes completarán un acta con fecha y hora, kilometraje, combustible o carga, daños previos, accesorios, documentos, llaves y fotografías o video. Ambas recibirán copia y podrán registrar observaciones. El acta de entrega debe ser confirmada en la aplicación por ambas partes antes de iniciar el arriendo; quien no esté de acuerdo puede registrar su propia acta u observación. El arrendatario podrá rechazar un vehículo inseguro o sustancialmente distinto del reservado y solicitar devolución de lo pagado por servicios no prestados, sin perjuicio de otros derechos.
 
 En la devolución se levantará un acta equivalente y se comparará con la entrega. Una reserva u observación deberá expresar su fundamento. La falta de firma de una parte no transforma unilateralmente el acta de la otra en prueba concluyente. Si la entrega es sin presencia del arrendador, la ficha deberá establecer un procedimiento verificable y seguro para recepción y llaves.
 
@@ -198,6 +198,8 @@ En las relaciones sujetas a la legislación de consumo se respetará el derecho 
 Las devoluciones se realizarán por el medio de pago original, salvo acuerdo válido distinto, dentro del plazo legal aplicable. Se informará la gestión y el tiempo estimado del proveedor. Si se desea incorporar una exclusión legalmente permitida del retracto para servicios, deberá revisarse expresamente y mostrarse antes de contratar y pagar, de manera destacada, inequívoca y fácilmente accesible; no bastará una mención oculta.
 
 ## 21. Suspensión y término de cuentas
+
+Las operaciones iniciadas en la Plataforma deben concretarse y pagarse dentro de ella. Antes de confirmarse una reserva, la Plataforma oculta en el chat, en las publicaciones y en los perfiles los teléfonos, correos y enlaces, y revisa de forma automatizada los mensajes para detectar intentos de pagar o arrendar por fuera, que pueden ser revisados por una persona. Concretar por fuera una operación iniciada en RUÉ deja la operación sin pago protegido, garantía administrada, contrato digital, actas ni soporte, y puede dar lugar a las medidas de esta cláusula.
 
 La Operadora podrá suspender una publicación, reserva o cuenta ante riesgo de seguridad, documentación inválida, fraude, incumplimientos graves o uso ilícito con fundamentos objetivos. La medida deberá ser proporcional y se comunicará su motivo, duración estimada y canal de revisión, salvo restricciones legales. En una reserva en curso se coordinará la seguridad de las personas y restitución del vehículo.
 

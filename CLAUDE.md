@@ -10,6 +10,7 @@
 - **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Transbank, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
 - Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
 - **Configuración económica del MVP implementada (migración 0008, 2026-10-01):** comisiones versionadas 15 %/8 %, garantías por tipo fijadas por RUÉ, snapshot de precio por reserva, ledger inmutable, GMV/take rate, payouts T+2 con estados, domain events. **IVA pendiente de contador** (no se asume neto ni bruto). Ver §6 y §13.17.
+- **Marketplace transaccional completo (migración 0009, 2026-10-01): ver §14.** Negociación tipo inDrive (ofertas con mínimo de RUÉ, 3 rondas), datos de contacto ocultos y señales de pago por fuera marcadas para revisión, contrato digital con hash, check-in/out confirmado por ambas partes con daños estructurados, extensiones pagadas por Webpay, trust layer y relación repetida en el snapshot.
 - **Arquitectura de negocio y salida (2026-10-01): ver §13.** Es la definición vigente del modelo económico y reemplaza cualquier supuesto anterior contradictorio. Comisión propietario **15 %**, fee arrendatario **8 %**, garantía la determina RUÉ (no el propietario), payout T+2 días hábiles. Contradicciones con el código actual y plan: §13.17.
 - **Decisiones del dueño (2026-10-01):** todos los tipos de vehículo; precio por días + el arrendador propone hora de entrega y devolución al aceptar; casilla C obligatoria. Pagos: **solo Webpay**, con cuotas. Pendientes: garantía (captura diferida u Oneclick de Transbank, esperando respuestas de Transbank, ver LANZAMIENTO.md) y retracto (a/b con abogado).
 - **Términos y Condiciones oficiales = documento del dueño** (`legal/fuente/Terminos_y_condiciones_arriendo_vehiculos.docx`, versión 2026-09-30), convertido a `legal/terminos.md`. Sus notas internas están en `legal/notas-internas.md` (no se publican). La app se alineó con él en la migración 0005.
@@ -50,7 +51,7 @@ src/
     payout.tsx               # Datos bancarios del propietario (estado de cada pago: en booking/[id])
     legal/[doc].tsx          # Términos / Privacidad (accesible sin sesión)
     vehicle-verify.tsx       # Acreditar dominio: Certificado de Anotaciones Vigentes + padrón (cláusula 4)
-    handover.tsx             # Acta de entrega / devolución: km, combustible, observaciones, fotos (cláusula 11)
+    handover.tsx             # Acta de entrega / devolución: km, combustible, daños por zona, observaciones, fotos (cláusula 11)
   components/
     ui.tsx                   # Primitivas: Text, Wordmark, Screen, Button, IconButton, Input, FieldButton,
                              # Chip, Segmented, Card, Divider, SectionHeader, Row, Badge, Price, Avatar,
@@ -60,6 +61,9 @@ src/
     SetupNeeded.tsx          # Pantalla si falta .env
     forms.tsx                # Checkbox, Stars (reseñas), MenuRow
     ReportSheet.tsx          # Reportar usuario / publicación / reserva (+ bloquear)
+    booking/NegotiationCard.tsx  # Ofertas y contraofertas (counter_offer / accept_offer / accept_booking)
+    booking/ExtensionCard.tsx    # Pedir, aprobar y pagar extensiones
+    booking/AgreementCard.tsx    # Contrato digital y anexos (hash)
   lib/
     supabase.ts              # Cliente (solo EXPO_PUBLIC_*), photoUrl()
     auth.tsx                 # AuthProvider / useAuth
@@ -87,6 +91,7 @@ supabase/
   migrations/0006_owner_times_mandatory_consent.sql  # horas propuestas por el arrendador (accept_booking), casilla C obligatoria, Términos 2026-10-01
   migrations/0007_webpay.sql              # pagos Webpay: buy_order, cuotas, tipo de pago, proveedor en confirm/record
   migrations/0008_economics.sql           # config económica versionada, guarantee_rules, snapshot, ledger, payouts T+2, domain_events, métricas
+  migrations/0009_transaction_lifecycle.sql  # ofertas, contacto oculto/moderación, contrato digital, check-in/out, extensiones, trust
   functions/                 # Edge Functions (Deno): webpay-create, webpay-return, push-dispatch, delete-account
   functions/_shared/         # http, supabase (admin/usuario), webpay (API Transbank), redirect (+ pruebas)
   config.toml                # verify_jwt por función
@@ -97,6 +102,7 @@ supabase/
   tests/terms_compliance.test.sql
   tests/webpay.test.sql
   tests/economics.test.sql                # ejemplo 100.000 → GMV 100.000, fees 15.000/8.000, cobro 108.000, take rate 23 %
+  tests/lifecycle.test.sql                # negociación 3 rondas, mínimo, chat oculto, contrato, check-in, extensión, payout
 eas.json                     # Perfiles de build: preview (APK interno) y production (tiendas)
 .github/workflows/ci.yml     # CI: legal al día, tsc, lint, pruebas de BD y de Edge Functions
 LANZAMIENTO.md               # Lista de tareas del dueño para lanzar
@@ -159,6 +165,17 @@ RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, 
 - **Payouts**: estados `pending → eligible → scheduled → paid` + `held`, `failed`. Se crean al pasar a `devuelta` (o `finalizada` desde una disputa) con `eligible_on = add_business_days(fecha devolución CL, payout_delay de la reserva)` (salta fines de semana y `business_holidays`). Cron horario `promote_eligible_payouts()`. `disputada` → `held/open_dispute`; cancelada tras pagar → `held`. Admin: `schedule_payout`, `mark_payout_paid`, `hold_payout`, `release_payout`, `mark_payout_failed`. El propietario ve su payout (RLS) en el detalle de la reserva.
 - **Domain events** `domain_events` (solo servidor): triggers en profiles, vehicles, bookings, payments, payouts + `search_performed` desde `search_vehicles` (primera página, con `result_count`/`zero_result`). La app solo puede enviar `vehicle_viewed` y `checkout_started` vía `log_event()`.
 
+**Ciclo transaccional (0009)** — ver §14 para el principio de producto.
+- `price_booking(vehicle, start, end, agreed_daily)` es el cálculo único (compute_booking_price lo envuelve). `price_guidance()` da publicado/recomendado/mínimo desde `offer_rules` (versionada, inmutable; MVP provisorio 82 % / 95–105 % / redondeo $1.000 / 3 rondas / 24 h). `quote_booking(…, p_offer_daily_clp)` devuelve la guía **sin el mínimo**.
+- `request_booking(…, p_offer_daily_clp)`: oferta < publicado → valida mínimo, precio a la oferta, crea `booking_offers` ronda 1 (con `max_rounds`). Oferta ≥ publicado → reserva normal. Guarda `pricing_snapshot.relationship.repeat_pair_completed` (reservas finalizadas previas de la pareja) y oculta contacto en el mensaje.
+- `counter_offer(booking, monto, horas?)` (quien recibe la oferta pendiente; el propietario incluye horas), `accept_offer(booking)` (arrendatario acepta contraoferta → `aceptada` con esas horas), `accept_booking(booking, horas)` (propietario; acepta la oferta pendiente del arrendatario). Una sola oferta `pending` por reserva (índice único). Rechazar/cancelar/vencer la reserva cierra las ofertas (trigger).
+- **Re-precio** solo con `reprice_booking()` y `bookings.status = 'solicitada'` (flag `rue.reprice`); después de aceptar los montos quedan congelados. `transition_booking` ya no acepta: se acepta con `accept_booking`/`accept_offer` (`finalize_acceptance`).
+- **Contacto**: `contact_signals()`/`mask_contact_data()`. Trigger en `messages`: antes de `confirmada` oculta teléfonos/correos/links (`moderation = {masked:true}` visible para las partes); siempre marca señales de pago por fuera en `message_flags` (solo admin) + evento `off_platform_signal`. Publicaciones (título, descripción, lugar) y perfiles (nombre, bio) rechazan teléfonos/correos/links. Nunca se bloquea un mensaje.
+- **Check-in/out**: `booking_handovers` + `damages` (jsonb `[{zone, description, photo_path?}]`, validado), `latitude/longitude` (opcionales, la app aún no los envía), `owner/renter_confirmed_at`, `analysis`/`analysis_status` (futuro: damage_detection, photo_comparison, odometer_ocr). `submit_handover(…, p_damages, p_lat, p_lng)` confirma por su autor; `confirm_handover(id)` la otra parte. `en_curso` exige acta de entrega confirmada por **ambos**; `devuelta` exige acta de devolución con confirmación del propietario. `handover_comparison(booking)`: km recorridos vs permitidos, combustible, daños nuevos por zona.
+- **Contrato digital**: `booking_agreements` (inmutable, participantes leen) se genera al pasar a `confirmada` (v1 `contract`) y por cada extensión pagada (`extension_addendum`), con `content` jsonb y `content_sha256`. Partes con nombre visible; RUT/datos legales los resguarda RUÉ. Protección: `status = not_offered`.
+- **Extensiones**: `booking_extensions` (montos y snapshot inmutables): `request_extension(booking, nueva_fin)` (arrendatario, reserva `confirmada`/`en_curso`, disponibilidad, tarifa diaria del contrato, fees de la config vigente) → `respond_extension` (propietario) → pago Webpay (`webpay-create` con `extension_id`; `payments.extension_id`) → `confirm_extension_payment` (service_role; mismos códigos que el pago de reserva; mueve `bookings.end_date` con flag `rue.extension`). Ledger `extension:<id>:…`; payout incluye extensiones pagadas; vencen con `expire_stale_bookings`; se cierran si la reserva termina.
+- **Trust**: `user_trust(user)` (verificaciones, completados como propietario/arrendatario, rating, cancelaciones 12 m, mediana de respuesta, tasa de respuesta; sin disputas) y `vehicle_trust(vehicle)` (verificado, completados, rating; utilización 90 d, disputas y próxima reserva solo para el propietario/admin).
+
 **Estados**
 
 ```
@@ -167,12 +184,13 @@ solicitada → aceptada → confirmada → en_curso → devuelta → finalizada
 
 | Desde | Hacia | Quién |
 |---|---|---|
-| solicitada | aceptada / rechazada | propietario (al aceptar, las otras solicitudes cruzadas pasan a rechazada) |
+| solicitada | aceptada | propietario con `accept_booking` o arrendatario con `accept_offer` (las otras solicitudes cruzadas pasan a rechazada) |
+| solicitada | rechazada | propietario |
 | solicitada | cancelada | arrendatario |
 | solicitada / aceptada | vencida | servidor (`expire_stale_bookings`, cron) |
 | aceptada | confirmada | **solo** `confirm_booking_payment` (commit Webpay, service_role) |
 | aceptada | cancelada | cualquiera de los dos |
-| confirmada | en_curso | propietario, desde la fecha de inicio (hora Chile) |
+| confirmada | en_curso | propietario, desde la fecha de inicio (hora Chile), con acta de entrega confirmada por ambos |
 | confirmada | cancelada | permitido en el grafo, **no expuesto a la app** (requiere política de reembolso) |
 | en_curso | devuelta | propietario |
 | devuelta | finalizada | propietario |
@@ -273,6 +291,14 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Garantía con tarjeta de crédito (cláusulas 8–10) | ✅ monto por tipo fijado por RUÉ (`guarantee_rules`); ⏳ cobro/bloqueo: captura diferida u Oneclick, esperando respuestas de Transbank |
 | Configuración económica (15 %/8 % versionada, snapshot, ledger, GMV/take rate, payouts T+2, domain events) | ✅ 0008 + pruebas; ⏳ IVA (contador) |
 | Horas de entrega/devolución propuestas por el arrendador (cláusula 6) | ✅ precio por días |
+| Negociación tipo inDrive (ofertas, mínimo de RUÉ, 3 rondas) | ✅ 0009 + UI; ⏳ dueño confirma números (provisorios) |
+| Contacto oculto + moderación de pagos por fuera | ✅ 0009 (revisión manual en OPERACION.md 5 b) |
+| Contrato digital con hash + anexos | ✅ 0009 |
+| Check-in/out confirmado por ambos + daños por zona + comparación | ✅ 0009; ⏳ ubicación GPS y análisis de fotos (futuro) |
+| Extensiones con pago Webpay | ✅ 0009 + webpay-create/return; ⏳ probar en integración de Transbank |
+| Trust layer (user_trust, vehicle_trust) | ✅ 0009 (ficha usa user_trust) |
+| Protección / seguro como producto | ⏳ aseguradora (no se afirma cobertura) |
+| RUÉ Pro / Fleet (organizaciones) | ⏳ arquitectura descrita en §14; sin tablas aún |
 | Personas jurídicas como arrendador (cláusula 3–4) | ⏳ backlog |
 | Conductores adicionales (cláusula 5) | ⏳ backlog (hoy: solo el arrendatario conduce) |
 | Mapa, analytics | ⏳ decisión del dueño |
@@ -286,6 +312,9 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Importante | IVA de comisión y cargo de servicio pendiente de contador: `tax_treatment = pending_accountant`, impuestos e ingreso neto en NULL, cláusula 7 con marcador. |
 | Importante | Ingreso reconocido al confirmar el pago (y revertido si se cancela después): validar criterio con el contador. |
 | Mejora | Feriados movibles de Chile: el admin los agrega en `business_holidays` cada año. |
+| Importante | Mínimo de precio fijado por la plataforma entre particulares: validar con abogado (libre competencia). Números de `offer_rules` provisorios. |
+| Mejora | Detección de contacto por expresiones regulares: puede tener falsos positivos/negativos; por eso solo oculta antes del pago y marca para revisión humana. |
+| Mejora | Con varias ofertas abiertas de distintos arrendatarios para las mismas fechas, aceptar una rechaza las demás (trigger); no hay subasta. |
 | Importante | Términos ampliados por Claude a todos los tipos de vehículo (decisión del dueño): falta revisión del abogado. |
 | Importante | Garantía por bloqueo de cupo (Términos 8–10) pendiente: Webpay captura diferida (plazo de captura limitado) u Oneclick. |
 | Importante | Derecho de retracto (10 días, cláusula 20) y política de cancelación no implementados en la app (cancelación de reservas pagadas es manual). Esperando decisión (a) dar retracto o (b) excluirlo con aviso. |
@@ -416,3 +445,42 @@ Cada una debe respetar legislación, contratos, privacidad, impuestos, regulaci�
 **Pendiente de esa lista:** IVA (contador); costo real de Transbank por transacción (se registra a mano con `record_processing_cost`).
 
 **Aplazar (camino abierto):** organizaciones/Fleet/roles, RUÉ Pro, Fast Payout, risk_score, tasas por tier/categoría/campaña, ranking avanzado, featured listings, dashboard de métricas, estimated_earnings, normalización geográfica (region/zone), impuestos en el ledger (requiere contador), migrar el enum `vehicle_type` a tabla de categorías (hoy las reglas por categoría pueden colgar del enum; `ALTER TYPE … ADD VALUE` permite agregar tipos).
+
+## 14. Principio de producto: marketplace transaccional completo — definición del dueño, 2026-10-01
+
+> RUÉ **no** es solo un marketplace de listings. Debe capturar todo el ciclo de vida de una operación, de modo que propietario y arrendatario obtengan **más valor quedándose en RUÉ** que operando directo: *"Reservar por fuera = perder protección, trazabilidad y comodidad."* El objetivo no es solo impedir que se vayan.
+
+**Ciclo**: Discovery → Offer → Negotiation → Booking → Payment → Verification → Digital agreement → Check-in → Active rental → Extension → Check-out → Damage/Dispute → Payout → Review.
+
+**Pregunta central para cada feature**: *¿Hace que RUÉ sea más útil como infraestructura transaccional de movilidad?* Si solo decora, no es prioridad. No optimizar por cantidad de listings: optimizar active listings, liquid supply, successful matches, completed transactions, repeat transactions, GMV, net revenue, utilization, retention.
+
+### 14.1 Negociación (inspirada en inDrive)
+- El propietario define el **precio publicado**. RUÉ calcula server-side el **precio recomendado** y el **precio mínimo permitido** (propiedad de RUÉ; no se expone el número, solo "Esta oferta está bajo el mínimo permitido.").
+- El mínimo debe poder considerar progresivamente: categoría, valor, duración, ubicación, demanda, disponibilidad, temporada, riesgo y reglas del propietario (`offer_rules.conditions`). Nunca en React Native.
+- El arrendatario ofrece ≥ mínimo; el propietario acepta, rechaza o contraoferta. **Máximo 3 rondas.** El backend valida disponibilidad, reglas de precio, mínimo, duración, elegibilidad, riesgo y estado de la oferta. Cada oferta queda registrada (`booking_offers`: id, booking, sender, recipient, amount, currency, status, round_number, expires_at, created_at; estados pending, accepted, rejected, countered, expired, cancelled). Sin ofertas simultáneas que puedan generar doble reserva.
+
+### 14.2 Desintermediación
+- No exponer teléfono, correo, dirección personal ni datos de pago externos antes de una reserva confirmada cuando no sea necesario. El chat vive en RUÉ.
+- Moderar y detectar intentos de sacar la operación (WhatsApp, +56, transferencia, Mercado Pago directo, "págame afuera", "te hago descuento si…") y **marcar para revisión** según reglas de seguridad y privacidad, **sin bloquear conversaciones normales**.
+
+### 14.3 Valor de quedarse en RUÉ
+Identidad verificada, pago procesado, garantía administrada, contrato digital, check-in digital, fotos pre y post, kilometraje y combustible registrados, historial, disputas, soporte, reputación, extensiones, registro de daños, payout al propietario.
+
+### 14.4 Check-in / check-out
+Fotos, timestamp, ubicación cuando legalmente corresponda, kilometraje, combustible, daños existentes y aceptación de ambas partes; mismo proceso al devolver; estado comparable antes/después. Sin computer vision obligatoria en MVP, pero con estructura para `damage_detection`, `photo_comparison`, `odometer_ocr`.
+
+### 14.5 Extensiones
+Solicitud desde la reserva: verifica disponibilidad, recalcula precio y fee, pide aprobación del propietario cuando corresponda, procesa pago, actualiza la reserva y genera snapshot financiero. **Nunca modificar silenciosamente una reserva histórica.**
+
+### 14.6 Repeat transactions
+Si dos usuarios ya completaron una reserva, podrán tener condiciones especiales configurables (menor fee, proceso acelerado, menor fricción). **No implementar descuentos todavía**; guardar historial suficiente (hoy: `pricing_snapshot.relationship`).
+
+### 14.7 Trust layer
+Usuario: identidad verificada, arriendos completados, cancelaciones, disputas, reseñas, tiempo de respuesta, antigüedad. Vehículo: verificado, completados, utilización, reseñas, historial de incidentes. Sin exponer información privada.
+
+### 14.8 Protección
+Producto **separado** del precio del arriendo. No inventar coberturas. Antes de producción, validar con abogado y aseguradora: qué cubre, quién es asegurado, RC, daño físico, robo, asistencia, uso comercial, uso en plataformas de transporte. La UI puede reservar espacio, pero nunca afirmar una cobertura inexistente.
+
+### 14.9 RUÉ Pro y RUÉ Fleet (preparar, no construir)
+- Pro: menor take rate, analytics, pricing, multi-vehículo, calendario, fast payout, soporte prioritario. Camino: tasas por tier como nueva dimensión de `economic_config_versions` (o tabla de tasas por segmento) resuelta en `price_booking`; analytics desde `domain_events`/`vehicle_trust`.
+- Fleet: `organizations`, `organization_members` (roles owner/admin/operator/finance/viewer), `vehicles.organization_id` nullable, operadores que hacen check-in por la organización. Hoy nada asume un vehículo por usuario; los datos legales no están en `profiles` (están en `profile_private`), así que una organización puede tener sus propios datos legales. No construir un ERP.

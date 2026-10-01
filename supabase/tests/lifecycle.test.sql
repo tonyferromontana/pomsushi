@@ -144,8 +144,9 @@ do $$ begin
   if exists (select 1 from public.messages where body like '%5678%' or body like '%juan@%') then
     raise exception 'FALLA: el chat mostró datos de contacto antes de confirmar';
   end if;
-  if (select count(*) from public.messages where booking_id = current_setting('rue.lc1')::uuid and moderation is not null) <> 2 then
-    raise exception 'FALLA: moderación (debían marcarse 2 de 3 mensajes)';
+  if (select count(*) from public.messages where booking_id = current_setting('rue.lc1')::uuid and moderation is not null) <> 1
+     or exists (select 1 from public.messages where moderation ? 'signals') then
+    raise exception 'FALLA: la marca visible debe ser solo "dato oculto", sin señales';
   end if;
   begin
     perform 1 from public.message_flags;

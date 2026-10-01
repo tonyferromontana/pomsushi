@@ -7,8 +7,10 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, Chip, Input, Notice, Screen, Text } from '@/components/ui';
+import { DAMAGE_ZONES } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import type { HandoverDamage } from '@/lib/types';
 import { colors, radius, space } from '@/theme';
 
 const FUEL = [0, 25, 50, 75, 100];
@@ -24,6 +26,9 @@ export default function HandoverScreen() {
   const [fuel, setFuel] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [damages, setDamages] = useState<HandoverDamage[]>([]);
+  const [damageZone, setDamageZone] = useState<string | null>(null);
+  const [damageText, setDamageText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +42,13 @@ export default function HandoverScreen() {
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, allowsMultipleSelection: true });
     if (res.canceled) return;
     setPhotos((p) => [...p, ...res.assets.map((a) => a.uri)].slice(0, MAX_PHOTOS));
+  };
+
+  const addDamage = () => {
+    if (!damageZone) return;
+    setDamages((d) => [...d, { zone: damageZone, description: damageText.trim().slice(0, 300) || undefined }].slice(0, 30));
+    setDamageZone(null);
+    setDamageText('');
   };
 
   const submit = async () => {
@@ -68,6 +80,7 @@ export default function HandoverScreen() {
         p_fuel_level: fuel,
         p_notes: notes.trim() || null,
         p_photo_paths: paths,
+        p_damages: damages,
       });
       if (err) throw err;
       router.back();
@@ -93,7 +106,8 @@ export default function HandoverScreen() {
       <Stack.Screen options={{ title }} />
       <View style={{ gap: space.lg, paddingTop: space.lg }}>
         <Text color="textSecondary">
-          Revisen el vehículo juntos. Esta acta queda guardada para ambos y sirve como respaldo si hay un reclamo.
+          Revisen el vehículo juntos. La otra parte debe confirmar esta acta en la app. Queda guardada para ambos y
+          sirve como respaldo si hay un reclamo.
         </Text>
         <Input
           label="Kilometraje del tablero"
@@ -112,6 +126,33 @@ export default function HandoverScreen() {
               <Chip key={f} label={f === 0 ? 'Reserva' : f === 100 ? 'Lleno' : `${f} %`} selected={fuel === f} onPress={() => setFuel(f)} />
             ))}
           </View>
+        </View>
+        <View style={{ gap: space.sm }}>
+          <Text variant="label" color="textSecondary">
+            Daños ({damages.length === 0 ? 'ninguno registrado' : damages.length})
+          </Text>
+          {damages.map((d, i) => (
+            <View key={`${d.zone}-${i}`} style={styles.damageRow}>
+              <Text variant="bodySmall" style={{ flex: 1 }}>
+                {d.zone}
+                {d.description ? ` · ${d.description}` : ''}
+              </Text>
+              <Pressable accessibilityLabel="Quitar daño" onPress={() => setDamages((x) => x.filter((_, j) => j !== i))}>
+                <Ionicons name="close" size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          ))}
+          <View style={styles.wrap}>
+            {DAMAGE_ZONES.map((z) => (
+              <Chip key={z} label={z} selected={damageZone === z} onPress={() => setDamageZone(damageZone === z ? null : z)} />
+            ))}
+          </View>
+          {damageZone ? (
+            <View style={{ gap: space.sm }}>
+              <Input placeholder="Describe el daño (ej: rayón de 10 cm)" value={damageText} onChangeText={setDamageText} maxLength={300} />
+              <Button label={`Agregar daño en ${damageZone.toLowerCase()}`} variant="secondary" small onPress={addDamage} />
+            </View>
+          ) : null}
         </View>
         <Input
           label="Observaciones"
@@ -152,6 +193,14 @@ export default function HandoverScreen() {
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  damageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    padding: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
   photo: { width: '31%', aspectRatio: 1, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surface },
   add: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border },
   remove: {

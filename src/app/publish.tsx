@@ -14,7 +14,7 @@ import { useAuth } from '@/lib/auth';
 import { ATTRIBUTE_FIELDS, PURPOSES, VEHICLE_TYPES, vehicleTypeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { guaranteeForType } from '@/lib/guarantee';
-import { clp } from '@/lib/format';
+import { clp, digits, thousands, toInt } from '@/lib/format';
 import { photoUrl, supabase, VEHICLE_PHOTOS_BUCKET } from '@/lib/supabase';
 import { useAsync } from '@/lib/useAsync';
 import type { BookingPurpose, ListingStatus, Vehicle, VehicleAttributes, VehicleType } from '@/lib/types';
@@ -77,12 +77,6 @@ function uuid(): string {
   });
 }
 
-const digits = (s: string) => s.replace(/[^0-9]/g, '');
-const toInt = (s: string) => (digits(s) ? parseInt(digits(s), 10) : null);
-const thousands = (s: string) => {
-  const d = digits(s);
-  return d ? parseInt(d, 10).toLocaleString('es-CL').replace(/,/g, '.') : '';
-};
 
 function validate(step: number, f: Form, photos: PhotoItem[]): string | null {
   if (step === 0 && !f.vehicle_type) return 'Elige qué quieres publicar.';

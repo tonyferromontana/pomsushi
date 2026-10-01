@@ -108,6 +108,74 @@ export type Handover = {
   fuel_level: number | null;
   notes: string | null;
   photo_paths: string[];
+  /** Daños registrados en el acta (zona + descripción). */
+  damages: HandoverDamage[];
+  owner_confirmed_at: string | null;
+  renter_confirmed_at: string | null;
+  captured_at: string;
+  created_at: string;
+};
+
+export type HandoverDamage = { zone: string; description?: string; photo_path?: string };
+
+/** Respuesta de handover_comparison(): antes / después, calculado por el servidor. */
+export type HandoverComparison = {
+  check_in: { id: string; odometer_km: number | null; fuel_level: number | null; damages: HandoverDamage[]; confirmed_by_both: boolean } | null;
+  check_out: { id: string; odometer_km: number | null; fuel_level: number | null; damages: HandoverDamage[]; confirmed_by_both: boolean } | null;
+  km_driven: number | null;
+  fuel_delta: number | null;
+  new_damage_zones: string[];
+  km_allowed: number | null;
+};
+
+export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'expired' | 'cancelled';
+
+/** Oferta de precio por día dentro de una negociación (la valida el servidor). */
+export type BookingOffer = {
+  id: string;
+  booking_id: string;
+  sender_id: string;
+  recipient_id: string;
+  amount_clp: number;
+  status: OfferStatus;
+  round_number: number;
+  max_rounds: number;
+  pickup_time: string | null;
+  return_time: string | null;
+  expires_at: string;
+  created_at: string;
+};
+
+export type ExtensionStatus = 'pending_owner' | 'awaiting_payment' | 'paid' | 'rejected' | 'expired' | 'cancelled';
+
+export type BookingExtension = {
+  id: string;
+  booking_id: string;
+  old_end_date: string;
+  new_end_date: string;
+  days: number;
+  daily_rate_clp: number;
+  rental_clp: number;
+  renter_fee_clp: number;
+  owner_commission_clp: number;
+  total_clp: number;
+  owner_payout_clp: number;
+  status: ExtensionStatus;
+  expires_at: string | null;
+  created_at: string;
+};
+
+/** Contrato digital (o anexo de extensión) generado por el servidor al pagar. */
+export type BookingAgreement = {
+  id: string;
+  booking_id: string;
+  version: number;
+  kind: 'contract' | 'extension_addendum';
+  terms_version: string;
+  content: Record<string, unknown>;
+  content_sha256: string;
+  renter_accepted_at: string;
+  owner_accepted_at: string;
   created_at: string;
 };
 
@@ -197,6 +265,8 @@ export type Message = {
   sender_id: string;
   body: string;
   read_at: string | null;
+  /** Lo pone el servidor si ocultó un dato de contacto (antes de confirmar la reserva). */
+  moderation: { masked: boolean } | null;
   created_at: string;
 };
 
@@ -208,4 +278,11 @@ export type Quote = {
   total_clp: number;
   /** Garantía (no incluida en total_clp) */
   deposit_clp: number;
+  /** Guía de precio por día (el mínimo permitido no se expone). */
+  published_daily_clp: number;
+  recommended_daily_low_clp: number;
+  recommended_daily_high_clp: number;
+  /** Oferta aplicada (null = precio publicado) */
+  offer_daily_clp: number | null;
+  max_rounds: number;
 };

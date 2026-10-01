@@ -109,7 +109,7 @@ export default function ChatScreen() {
           <EmptyState
             icon="chatbubble-outline"
             title="Conversen aquí"
-            body="Coordinen la entrega y la devolución. No compartas datos de pago por mensaje."
+            body="Coordinen la entrega y la devolución aquí. Los teléfonos y correos se muestran recién cuando la reserva está pagada, y nunca se paga por fuera de RUÉ: fuera de la app no hay garantía, contrato ni soporte."
           />
         ) : (
           <FlatList
@@ -124,6 +124,11 @@ export default function ChatScreen() {
                   <Text variant="body" color={mine ? 'onAccent' : 'text'}>
                     {m.body}
                   </Text>
+                  {m.moderation?.masked ? (
+                    <Text variant="caption" color={mine ? 'onAccent' : 'textSecondary'}>
+                      Ocultamos un dato de contacto: se puede compartir cuando la reserva esté pagada.
+                    </Text>
+                  ) : null}
                   <Text variant="caption" color={mine ? 'onAccent' : 'textSecondary'} align="right">
                     {timeOfDay(m.created_at)}
                   </Text>

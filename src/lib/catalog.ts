@@ -141,3 +141,18 @@ export function attributeSummary(attrs: VehicleAttributes, t: VehicleType): stri
     })
     .filter((x): x is string => x !== null);
 }
+
+/** Zonas para registrar daños en las actas de entrega y devolución. */
+export const DAMAGE_ZONES = [
+  'Frente',
+  'Parachoques delantero',
+  'Parachoques trasero',
+  'Costado izquierdo',
+  'Costado derecho',
+  'Techo',
+  'Vidrios',
+  'Neumáticos y llantas',
+  'Interior',
+  'Carga o carrocería',
+  'Otro',
+] as const;

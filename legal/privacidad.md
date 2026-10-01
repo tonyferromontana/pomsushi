@@ -18,7 +18,7 @@ En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolec
 - **Vehículos:** datos, fotos, ubicación referencial (ciudad y comuna) y precios de lo que publiques.
 - **Reservas y pagos:** fechas, montos, estado y el identificador del pago. Los datos de tu tarjeta los procesa Transbank a través de Webpay; RUÉ nunca los recibe ni los guarda. Solo guardamos el tipo de pago (crédito, débito o prepago) y el número de cuotas.
 - **Datos bancarios:** si eres Propietario, la cuenta donde te transferimos.
-- **Mensajes y reseñas** que envíes dentro de la app.
+- **Mensajes y reseñas** que envíes dentro de la app, y las ofertas de precio de cada negociación.
 - **Datos técnicos:** tipo de dispositivo, token para enviarte notificaciones y registros de uso necesarios para que el servicio funcione y sea seguro.
 
 No recolectamos tu ubicación GPS ni usamos reconocimiento facial o biometría.
@@ -27,7 +27,7 @@ No recolectamos tu ubicación GPS ni usamos reconocimiento facial o biometría.
 
 - Crear y administrar tu cuenta.
 - Permitir publicar, buscar, reservar, pagar y comunicarte con la otra parte de una reserva.
-- Verificar identidad y licencias, prevenir fraudes y mantener la seguridad de la comunidad.
+- Verificar identidad y licencias, prevenir fraudes y mantener la seguridad de la comunidad. Para eso, antes de que una reserva esté pagada, ocultamos automáticamente teléfonos, correos y enlaces en los mensajes, y marcamos para revisión los mensajes que sugieren pagar por fuera de la app. La revisión la hace una persona del equipo y no genera decisiones automáticas sobre tu cuenta.
 - Transferir a los Propietarios lo que les corresponde y cumplir obligaciones tributarias y legales.
 - Enviarte avisos sobre tus reservas.
 - Atender reclamos, reportes y solicitudes.

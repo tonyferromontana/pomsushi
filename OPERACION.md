@@ -57,6 +57,22 @@ select public.publish_guarantee_rule('car', 300000, '2027-01', 'Subimos garantí
 
 Hoy la garantía **se muestra pero no se cobra** por la app (falta definir con Transbank cómo bloquear el cupo).
 
+### Ofertas (negociación de precio)
+
+El arrendatario puede ofrecer menos que el precio publicado. RUÉ calcula el rango recomendado y el **mínimo permitido** (el mínimo no se le muestra a nadie; solo ven "Esta oferta está bajo el mínimo permitido"). Vigente (provisorio): mínimo 82 % del precio publicado, recomendado entre 95 % y 105 %, redondeo a $1.000, máximo 3 rondas, 24 horas por oferta.
+
+```sql
+select vehicle_type, min_ratio, recommended_low_ratio, recommended_high_ratio, max_rounds, offer_ttl_hours, version, effective_from
+from public.offer_rules order by effective_from desc;
+```
+
+Cambiar (ejemplo: mínimo 85 % solo para camiones; `null` en vez de `'truck'` = todos los tipos):
+
+```sql
+set request.jwt.claim.role = 'service_role';
+select public.publish_offer_rule('truck', 0.85, 0.95, 1.05, 3, 24, '2027-01-camiones', 'Camiones: menos margen de negociación');
+```
+
 ### Plazos y exigencias
 
 ```sql
@@ -201,6 +217,45 @@ Motivos de retención: `damage_reported`, `open_dispute`, `late_return`, `unpaid
 ```sql
 insert into public.business_holidays (day, name) values ('2026-06-29', 'San Pedro y San Pablo');
 ```
+
+## 5 b. Intentos de pagar o arrendar por fuera de RUÉ
+
+Antes de que una reserva esté pagada, el chat oculta teléfonos, correos y links. Además, siempre se marcan para revisión los mensajes con señales como "WhatsApp", "transferencia", "Mercado Pago", "págame afuera" o "te hago descuento si…". **Nada se bloquea**: solo se marca para que lo revises.
+
+Marcas abiertas:
+
+```sql
+select f.id, f.created_at, f.signals, f.masked, f.booking_status, f.source, p.display_name, f.booking_id
+from public.message_flags f
+left join public.profiles p on p.id = f.sender_id
+where f.status = 'open'
+order by f.created_at desc;
+```
+
+Para ver la conversación usa el bloque del punto 7 con el `booking_id`. Si era una conversación normal, ciérrala; si fue un intento real, adviértele a la persona o suspende la cuenta (punto 6):
+
+```sql
+update public.message_flags set status = 'dismissed', reviewed_at = now(), review_note = 'Conversación normal' where id = <id>;
+update public.message_flags set status = 'actioned',  reviewed_at = now(), review_note = 'Se advirtió al usuario' where id = <id>;
+```
+
+## 5 c. Contratos y extensiones
+
+Cada reserva pagada genera un **contrato digital** (y un anexo por cada extensión pagada), con un código de verificación:
+
+```sql
+select version, kind, terms_version, content_sha256, created_at, content
+from public.booking_agreements where booking_id = '<id-de-la-reserva>' order by version;
+```
+
+Extensiones de una reserva:
+
+```sql
+select status, old_end_date, new_end_date, days, total_clp, owner_payout_clp, created_at, paid_at
+from public.booking_extensions where booking_id = '<id-de-la-reserva>' order by created_at;
+```
+
+El pago al propietario de una reserva extendida ya incluye lo que le corresponde por la extensión.
 
 ## 6. Reportes de usuarios
 

@@ -66,3 +66,15 @@ export function memberSince(iso: string): string {
   const d = new Date(iso);
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
+/** Solo dígitos (para campos de montos y números). */
+export const digits = (s: string) => s.replace(/[^0-9]/g, '');
+
+/** Monto escrito por la persona → entero (o null si está vacío). */
+export const toInt = (s: string) => (digits(s) ? parseInt(digits(s), 10) : null);
+
+/** Formatea mientras se escribe: "55000" → "55.000". */
+export const thousands = (s: string) => {
+  const d = digits(s);
+  return d ? parseInt(d, 10).toLocaleString('es-CL').replace(/,/g, '.') : '';
+};

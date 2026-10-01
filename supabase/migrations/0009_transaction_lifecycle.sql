@@ -292,6 +292,7 @@ create table if not exists public.booking_offers (
   status         text not null default 'pending'
                  check (status in ('pending', 'accepted', 'rejected', 'countered', 'expired', 'cancelled')),
   round_number   int not null check (round_number between 1 and 10),
+  max_rounds     int not null check (max_rounds between 1 and 10),   -- según la regla vigente al abrir la negociación
   pickup_time    time,   -- la contraoferta del propietario incluye las horas
   return_time    time,
   offer_rule_id  bigint references public.offer_rules (id),
@@ -533,8 +534,8 @@ begin
   end if;
   perform public.assert_valid_offer(b.vehicle_id, b.start_date, b.end_date, p_amount_clp);
   select * into gd from public.price_guidance(b.vehicle_id, b.start_date, b.end_date);
-  if o.round_number >= gd.max_rounds then
-    raise exception 'Se llegó al máximo de % rondas: solo puedes aceptar o rechazar', gd.max_rounds using errcode = 'P0001';
+  if o.round_number >= o.max_rounds then
+    raise exception 'Se llegó al máximo de % rondas: solo puedes aceptar o rechazar', o.max_rounds using errcode = 'P0001';
   end if;
   if p_amount_clp = o.amount_clp then
     raise exception 'Para ese precio, acepta la oferta' using errcode = '22023';
@@ -551,11 +552,11 @@ begin
 
   exp := now() + make_interval(hours => gd.offer_ttl_hours);
   update public.booking_offers set status = 'countered', responded_at = now() where id = o.id;
-  insert into public.booking_offers (booking_id, sender_id, recipient_id, amount_clp, round_number,
+  insert into public.booking_offers (booking_id, sender_id, recipient_id, amount_clp, round_number, max_rounds,
                                      pickup_time, return_time, offer_rule_id, expires_at)
-  values (b.id, uid, o.sender_id, p_amount_clp, o.round_number + 1,
+  values (b.id, uid, o.sender_id, p_amount_clp, o.round_number + 1, o.max_rounds,
           case when uid = b.owner_id then p_pickup_time end, case when uid = b.owner_id then p_return_time end,
-          gd.offer_rule_id, exp)
+          o.offer_rule_id, exp)
   returning id into new_id;
   update public.bookings set expires_at = greatest(coalesce(expires_at, exp), exp) where id = b.id;
 
@@ -699,8 +700,13 @@ begin
   if not pre then
     sig := array(select s from unnest(sig) s where s not in ('phone', 'email', 'link', 'messaging_app'));
   end if;
+  -- Las partes solo ven si se ocultó un dato; las señales quedan para revisión (solo administración).
+  if masked then
+    new.moderation := jsonb_build_object('masked', true);
+  end if;
   if cardinality(sig) > 0 then
-    new.moderation := jsonb_build_object('signals', to_jsonb(sig), 'masked', masked, 'booking_status', st);
+    perform set_config('rue.msgmod_' || replace(new.id::text, '-', ''),
+                       jsonb_build_object('signals', to_jsonb(sig), 'masked', masked, 'booking_status', st)::text, true);
   end if;
   return new;
 end;
@@ -717,13 +723,15 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  m jsonb := nullif(current_setting('rue.msgmod_' || replace(new.id::text, '-', ''), true), '')::jsonb;
 begin
-  if new.moderation is not null then
+  if m is not null then
     insert into public.message_flags (message_id, booking_id, sender_id, signals, masked, booking_status)
-    select new.id, new.booking_id, new.sender_id, array(select jsonb_array_elements_text(new.moderation -> 'signals')),
-           coalesce((new.moderation ->> 'masked')::boolean, false), (new.moderation ->> 'booking_status')::public.booking_status;
+    select new.id, new.booking_id, new.sender_id, array(select jsonb_array_elements_text(m -> 'signals')),
+           coalesce((m ->> 'masked')::boolean, false), (m ->> 'booking_status')::public.booking_status;
     perform public.emit_domain_event('off_platform_signal', new.booking_id, null,
-      jsonb_build_object('source', 'chat', 'signals', new.moderation -> 'signals', 'masked', new.moderation -> 'masked'));
+      jsonb_build_object('source', 'chat', 'signals', m -> 'signals', 'masked', m -> 'masked'));
   end if;
   return null;
 end;
@@ -882,8 +890,8 @@ begin
   values (new_id, uid, current_terms, true, true);
 
   if offer is not null then
-    insert into public.booking_offers (booking_id, sender_id, recipient_id, amount_clp, round_number, offer_rule_id, expires_at)
-    values (new_id, uid, v.owner_id, offer, 1, gd.offer_rule_id,
+    insert into public.booking_offers (booking_id, sender_id, recipient_id, amount_clp, round_number, max_rounds, offer_rule_id, expires_at)
+    values (new_id, uid, v.owner_id, offer, 1, gd.max_rounds, gd.offer_rule_id,
             now() + make_interval(hours => least(gd.offer_ttl_hours, coalesce(public.setting_numeric('request_expiry_hours'), 24)::int)));
   end if;
 
