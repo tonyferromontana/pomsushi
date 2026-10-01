@@ -9,6 +9,7 @@
 - El archivo `store` (componente web de pedidos de sushi, ajeno a RUÉ) se conserva sin tocar. No borrarlo sin autorización.
 - **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Transbank, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
 - Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
+- **Arquitectura de negocio y salida (2026-10-01): ver §13.** Es la definición vigente del modelo económico y reemplaza cualquier supuesto anterior contradictorio. Comisión propietario **15 %**, fee arrendatario **8 %**, garantía la determina RUÉ (no el propietario), payout T+2 días hábiles. Contradicciones con el código actual y plan: §13.17.
 - **Decisiones del dueño (2026-10-01):** todos los tipos de vehículo; precio por días + el arrendador propone hora de entrega y devolución al aceptar; casilla C obligatoria. Pagos: **solo Webpay**, con cuotas. Pendientes: garantía (captura diferida u Oneclick de Transbank, esperando respuestas de Transbank, ver LANZAMIENTO.md) y retracto (a/b con abogado).
 - **Términos y Condiciones oficiales = documento del dueño** (`legal/fuente/Terminos_y_condiciones_arriendo_vehiculos.docx`, versión 2026-09-30), convertido a `legal/terminos.md`. Sus notas internas están en `legal/notas-internas.md` (no se publican). La app se alineó con él en la migración 0005.
 - Como no existía "Rueda", se usa la marca y la paleta **RUÉ desde el inicio** (no hay rebranding pendiente de nombres internos). Bundle ID provisorio: `cl.rue.app`.
@@ -81,8 +82,8 @@ supabase/
   migrations/0003_trust_safety_legal.sql   # legal, verificación, reseñas, reportes, bloqueos, avisos, pagos a dueños, borrar cuenta
   migrations/0004_payments_cron_push.sql   # pagos no aprobados, pg_cron (vencimientos), pg_net → push
   migrations/0005_terms_compliance.sql     # cumplimiento de Términos: dominio del vehículo, casillas, actas, bitácora de datos
-  migrations/0007_webpay.sql              # pagos Webpay: buy_order, cuotas, tipo de pago, proveedor en confirm/record
   migrations/0006_owner_times_mandatory_consent.sql  # horas propuestas por el arrendador (accept_booking), casilla C obligatoria, Términos 2026-10-01
+  migrations/0007_webpay.sql              # pagos Webpay: buy_order, cuotas, tipo de pago, proveedor en confirm/record
   functions/                 # Edge Functions (Deno): webpay-create, webpay-return, push-dispatch, delete-account
   functions/_shared/         # http, supabase (admin/usuario), webpay (API Transbank), redirect (+ pruebas)
   config.toml                # verify_jwt por función
@@ -145,7 +146,7 @@ RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, 
 
 ## 6. Precios y máquina de estados (0002)
 
-**Precio (solo `compute_booking_price`)**: arriendo = días × precio día; si hay precio semanal y ≥7 días: min(normal, semanas × semanal + resto × día). `renter_fee = arriendo × renter_service_fee_pct`, `owner_commission = arriendo × owner_commission_pct`, `total = arriendo + renter_fee`, `owner_payout = arriendo − comisión`. La garantía se guarda aparte (no está incluida en el total; cómo se cobra/retiene es decisión pendiente). **Los % iniciales son 0: los define el dueño del negocio** en `platform_settings`.
+**Precio (solo `compute_booking_price`)**: arriendo = días × precio día; si hay precio semanal y ≥7 días: min(normal, semanas × semanal + resto × día). `renter_fee = arriendo × renter_service_fee_pct`, `owner_commission = arriendo × owner_commission_pct`, `total = arriendo + renter_fee`, `owner_payout = arriendo − comisión`. La garantía se guarda aparte (no está incluida en el total; cómo se cobra/retiene es decisión pendiente). **Hoy en la base los % están en 0; el dueño definió 15 % (propietario) y 8 % (arrendatario) — pendiente de aplicar con configuración versionada (§13.17).** La garantía hoy la define el propietario (`vehicles.deposit_clp`): **contradice §13.5**, pendiente de migrar a `guarantee_rules`.
 
 **Estados**
 
@@ -186,7 +187,7 @@ solicitada → aceptada → confirmada → en_curso → devuelta → finalizada
 3. RLS en toda tabla nueva. Datos sensibles (RUT, teléfono, dirección, licencia, cédula, documentos, banco, info financiera) nunca públicos. Storage con policies.
 4. Migraciones: siempre un archivo **nuevo** (`0003_…`). No editar 0001/0002 una vez aplicadas en Supabase. Correr `npm run test:db` y agregar pruebas al cambiar el esquema.
 5. Pagos: transacción creada en backend; confirmación solo por commit servidor-a-servidor con Transbank (validar estado, código, monto y orden); idempotencia; anulación automática de pagos no correspondientes; test/prod separados; nunca datos de tarjeta.
-6. Secretos: en la app solo `EXPO_PUBLIC_*`. Service role, token de MP y secretos de webhook solo como secrets de Edge Functions.
+6. Secretos: en la app solo `EXPO_PUBLIC_*`. Service role y claves de Transbank (`TBK_*`) solo como secrets de Edge Functions.
 7. Garantías, vencimientos y notificaciones corren en el servidor (cron), nunca dependen de abrir la app.
 8. Nada de `catch {}` silencioso: `logError()` en la app, logs sin secretos en el backend.
 9. Después de cada cambio: `npx tsc --noEmit` y `npx expo lint` sin errores antes de decir "listo".
@@ -298,3 +299,104 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 8. EAS / TestFlight — ✅ configuración; ⏳ cuentas del dueño
 
 Preguntar al dueño solo por negocio, dinero, marca, legal, servicios pagados, credenciales, producción o borrados. Lo técnico y reversible lo decide Claude.
+
+## 13. Arquitectura de negocio y salida (Business & Exit Architecture) — definición del dueño, 2026-10-01
+
+> Esta sección es la **definición vigente** del modelo económico de RUÉ y **reemplaza cualquier supuesto anterior contradictorio**. Es la **arquitectura objetivo**: no se implementa todo ahora. Se construyen solo las capas necesarias para la etapa actual **sin cerrar el camino** hacia esta arquitectura. No hacer rewrites generales.
+
+### 13.1 Objetivo estratégico
+- RUÉ se construye como compañía tecnológica **asset-light, escalable y potencialmente adquirible**. No optimizar por cantidad de features.
+- Optimizar arquitectura, datos y producto alrededor de: **GMV, ingresos netos, take rate, liquidez, utilización, repetición, retención de supply, unit economics, datos propietarios y efectos de red**.
+- RUÉ **no** es una rentadora ni compra flota. Es la infraestructura que conecta capacidad de movilidad ociosa con demanda temporal.
+- Concepto: *"Transformamos activos de movilidad detenidos en activos productivos."* Promesa: *"Haz producir lo que tienes parado."*
+
+### 13.2 Unidad del marketplace
+- Entidad principal: `vehicle` / `mobility_asset`. Nunca diseñar alrededor de `car`.
+- Tipos: car, motorcycle, suv, pickup, van, cargo_van, minibus, truck, trailer, special. **Categorías extensibles**: preferir tabla de categorías (o equivalente) por sobre enums rígidos cuando dé más flexibilidad.
+
+### 13.3 Comisión propietario
+- MVP: **15 %**, descontado del precio base de arriendo.
+- Nunca en el frontend ni repetido en varias Edge Functions: **configuración central server-side**.
+- Preparar tasas por: standard owner (15 %), pro owner, fleet owner, promocional, por categoría (futuras, configurables; no implementarlas aún).
+
+### 13.4 Fee arrendatario
+- MVP: **8 %**, calculado server-side. Preparado para variar por categoría, duración, perfil de riesgo, campañas, tipo de cuenta y demanda. La app nunca calcula el monto definitivo.
+
+### 13.5 Garantía
+- **RUÉ determina la garantía server-side**; el propietario no la define libremente.
+- Arquitectura: `guarantee_rules` (MVP: reglas simples por categoría) y luego `risk_score` (inputs futuros: vehicle_category, vehicle_value, vehicle_age, rental_duration, use_case, renter_history, owner_history, verification_level, claims_history, risk_flags).
+- Nunca un número fijo hardcodeado en la app.
+- La garantía **NO es revenue, NO es service fee, NO es precio del arriendo**: separada contable y conceptualmente.
+
+### 13.6 Take rate y métricas financieras
+- Registrar: `owner_fee`, `renter_fee`, `other_platform_revenue`, `gross_booking_value`, `net_revenue`, `effective_take_rate`.
+- GMV/GBV = valor bruto transaccionado según la definición contable adoptada. Net Revenue = ingreso atribuible a RUÉ (definir qué conceptos son ingreso). Take Rate = ingresos marketplace / GMV, con definición consistente.
+- No mezclar garantía con revenue. No contar dinero retenido temporalmente como ingreso.
+
+### 13.7 Payout propietario
+- Regla: **T+2 días hábiles** después de que la reserva quede correctamente devuelta.
+- Retención (held) por: damage_reported, open_dispute, late_return, unpaid_extra_charge, fraud_review, payment_issue.
+- Estados explícitos: **pending, eligible, scheduled, paid, held, failed**. No inferir el payout solo desde el estado de la reserva.
+- No simular transferencias que el proveedor no permite. Ledger interno consistente.
+- **RUÉ Fast Payout** (futuro, no ahora): cobro anticipado por fixed_fee o percentage_fee; fuente de ingreso adicional.
+
+### 13.8 RUÉ Pro y RUÉ Fleet (futuro)
+- Free (casual) vs **Pro** (lower_take_rate, advanced_analytics, multi_asset_tools, priority_support, pricing_tools, fast_payout, calendar_tools, automation). Sin cobro de suscripción ahora, pero sin decisiones que obliguen a rehacer usuarios/permisos.
+- **Fleet**: propietarios con decenas o cientos de activos. Ownership: individual, company, fleet. **No asumir one_user = one_vehicle.** Conceptos: organization, organization_members, vehicles, roles (owner, admin, operator, finance, viewer). No implementar todo; la migración debe ser razonable.
+- B2C + B2B: person→person, business→person, person→business, business→business. No asumir que ambas partes son individuos.
+- Organizaciones: no construir un ERP; no acoplar información legal a `profiles` de forma que impida agregar organizaciones.
+
+### 13.9 Fuentes de ingreso (roadmap, NO construir ahora)
+transaction commission · renter service fee · protection margin/commission (donde sea legal) · booking extensions · late fees (si el contrato lo permite) · fast payout · RUÉ Pro · RUÉ Fleet · featured listings · fleet management · telematics · maintenance partnerships · roadside assistance · insurance partnerships · financing partnerships · B2B services · API/data products (legal y ético).
+Cada una debe respetar legislación, contratos, privacidad, impuestos, regulación financiera y de seguros. **No inventar servicios regulados.**
+
+### 13.10 Ledger financiero interno
+- Cada reserva produce componentes separados: base_price, owner_fee, renter_fee, tax, discount, protection_fee, delivery_fee, extras, late_fee, additional_usage, guarantee, refund, owner_payout, platform_revenue.
+- No guardar solo un total. **Trazabilidad auditable** por un comprador potencial.
+
+### 13.11 Pricing engine
+- El propietario define o acepta un precio base; **RUÉ calcula el precio final**.
+- `pricing_rules`, `pricing_version`, `pricing_snapshot`. Una reserva conserva el snapshot (inputs, outputs, versión, timestamp). Cambiar reglas mañana **no altera reservas históricas**.
+
+### 13.12 Configuración versionada
+- Sistema server-side versionado para: fees, minimum/maximum_booking_duration, payout_delay, guarantee rules, category rules, cancellation policies.
+- Nunca depender de publicar una versión móvil para cambiar una comisión. Cambios importantes **auditables**.
+
+### 13.13 Analytics y eventos
+- Métricas a poder calcular (sin mostrar métricas falsas; guardar eventos para cuando haya datos): GMV, net revenue, effective take rate, completed bookings, booking conversion, search-to-book conversion, match rate, zero-result searches, vehicle utilization, available days, booked days, time to first booking, time to match, repeat renter/owner rate, owner/renter GMV retention, cancellation rate, dispute rate, claim rate, average booking value/duration, supply/demand concentration, organic/paid acquisition, CAC y contribution margin (cuando existan).
+- **Domain events** consistentes: user_created, vehicle_created, vehicle_published, vehicle_unpublished, search_performed, vehicle_viewed, booking_requested, booking_accepted, booking_rejected, checkout_started, payment_approved, payment_rejected, booking_confirmed, booking_started, vehicle_returned, booking_completed, booking_cancelled, dispute_opened, dispute_closed, payout_eligible, payout_paid.
+- Los eventos financieros críticos se **originan o verifican server-side**.
+- Geo: métricas por country, region, city, zone. Expansión progresiva; no abrir geografías sin supply.
+
+### 13.14 Supply
+- Retención de supply: que el propietario publique, consiga su primera reserva rápido, tenga buena experiencia, vuelva a disponibilizar y aumente su GMV.
+- UX del propietario: available_days, booked_days, revenue, utilization, next_booking; luego estimated_earnings (**siempre marcado como estimación**, nunca engañoso).
+- Liquidez: optimizar por active_supply, available_supply, bookable_supply, utilized_supply — no por cantidad de listings. Un vehículo nunca disponible no es supply líquido.
+
+### 13.15 Search, confianza, reseñas y datos
+- Ranking futuro: availability, distance, price, quality, rating, response speed, conversion, reliability. **No pay-to-win absoluto**; destacados identificados como tales.
+- Trust graph: verification status, completed bookings, cancellations, late returns, claims, disputes, ratings, response metrics, account age. Sin exponer datos sensibles; **un risk score interno nunca es una etiqueta pública discriminatoria**.
+- Reseñas solo de una relación/transacción válida (reviewer, reviewee, booking_id, rating, text, created_at + restricciones).
+- Data moat: datos estructurados para pricing, risk, availability, matching, utilization, forecasting (qué categorías rotan, qué zonas demandan, tiempo hasta reservarse, qué disponibilidad y precios convierten, incidentes por categoría, propietarios que crecen). **Privacidad y minimización primero.**
+
+### 13.16 Asset-light, exit readiness y norma técnica
+- RUÉ es marketplace / operating layer; si algún día hay inventario propio, separado contable y técnicamente.
+- Compradores hipotéticos (no construir para uno): marketplaces de movilidad, rent-a-car, automotrices, aseguradoras, fintech, bancos, leasing, fleet management, telematics, delivery/logistics, super apps, plataformas gig. El valor está en network, transactions, technology, data, supply, demand, brand y unit economics — no en inventario.
+- Mantener: migraciones limpias, security policies, ledger, historial de eventos, historial de configuración, versiones de pricing, eventos de pago, definiciones de analytics, documentación y tests de lógica crítica.
+- Evitar: magic numbers, lógica financiera duplicada, estado crítico decidido por el cliente, datos sensibles dispersos, dependencias innecesarias, código sin ownership claro.
+- **Norma técnica principal**: ninguna regla económica vive solo en React Native. Frontend presenta, recoge intención y solicita; backend autoriza, calcula, valida, persiste y cambia estados críticos.
+- **Prioridad actual**: 1) app funcionando, 2) backend seguro, 3) flujo completo de una transacción, 4) oferta real, 5) demanda real, 6) primera reserva, 7) repetición, 8) liquidez.
+
+### 13.17 Brechas entre el código actual y esta arquitectura (diagnóstico 2026-10-01)
+
+**Ya alineado:** precio, fees, montos y estados calculados y cambiados solo en el servidor; montos congelados por reserva (trigger); componentes separados en `bookings` (arriendo, fee arrendatario, comisión, total, payout, garantía — garantía fuera del total); `payments` + `payment_events` con idempotencia; `booking_events` (historial de estados); `vehicle_type` multimodal + `attributes` jsonb; reseñas atadas a reserva finalizada; verificaciones; RLS en todo; migraciones + tests; sin flota propia.
+
+**Contradice (corregir antes de la primera transacción real):**
+1. Fees en 0 % y en `platform_settings` sin versionado ni historial → aplicar 15 %/8 % con configuración versionada y auditada.
+2. Garantía definida por el propietario (`vehicles.deposit_clp`, campo en Publicar) → `guarantee_rules` por categoría, calculada server-side.
+3. Reservas sin `pricing_snapshot`/versión (se guardan montos, no qué reglas/tasas los produjeron) → snapshot por reserva.
+4. Sin ledger: los montos viven en columnas de `bookings`/`payments`/`payouts` → tabla `ledger_entries` escrita server-side (cargo, comisión, fee, reembolso, payout).
+5. Payout se crea al **finalizar** y con estados pendiente/pagado/retenido → crear al **devolver**, estados pending/eligible/scheduled/paid/held/failed, elegible T+2 días hábiles salvo retención.
+6. Sin domain events server-side ni registro de búsquedas (zero-result) → tabla `domain_events` + `search_performed` desde `search_vehicles`.
+
+**Aplazar (camino abierto):** organizaciones/Fleet/roles, RUÉ Pro, Fast Payout, risk_score, tasas por tier/categoría/campaña, ranking avanzado, featured listings, dashboard de métricas, estimated_earnings, normalización geográfica (region/zone), impuestos en el ledger (requiere contador), migrar el enum `vehicle_type` a tabla de categorías (hoy las reglas por categoría pueden colgar del enum; `ALTER TYPE … ADD VALUE` permite agregar tipos).

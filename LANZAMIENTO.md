@@ -13,9 +13,10 @@ Los precios son aproximados; confírmalos en cada sitio antes de pagar.
 - [ ] **Abrir una cuenta bancaria de la empresa.** Los pagos de los arrendatarios llegan ahí (a través de Webpay) y desde ahí les pagas a los propietarios.
 - [ ] **Pedir el número D-U-N-S de la empresa** (gratis): https://developer.apple.com/enroll/duns-lookup/ . Apple y Google lo exigen para publicar como empresa y tarda de 5 a 30 días. **Pídelo hoy.**
 - [ ] **Definir los números del negocio** y avisarle a Claude:
-  - Comisión al propietario (%).
-  - Cargo de servicio al arrendatario (%).
-  - Cada cuántos días hábiles les pagas a los propietarios.
+  - ~~Comisión al propietario~~ → **15 %** (decidido 2026-10-01).
+  - ~~Cargo de servicio al arrendatario~~ → **8 %** (decidido 2026-10-01).
+  - ~~Plazo de pago a propietarios~~ → **T+2 días hábiles** desde la devolución (decidido 2026-10-01).
+  - Montos de garantía por tipo de vehículo (los fija RUÉ, no el propietario).
   - Política de cancelación: qué se devuelve y cuándo, si cancela el arrendatario o si cancela el propietario.
   - Garantía: si se cobra por la app o se coordina en persona.
   - Edad mínima y antigüedad de licencia para arrendar.
