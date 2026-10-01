@@ -16,14 +16,21 @@ Los precios son aproximados; confírmalos en cada sitio antes de pagar.
   - ~~Comisión al propietario~~ → **15 %** (decidido 2026-10-01).
   - ~~Cargo de servicio al arrendatario~~ → **8 %** (decidido 2026-10-01).
   - ~~Plazo de pago a propietarios~~ → **T+2 días hábiles** desde la devolución (decidido 2026-10-01).
-  - Montos de garantía por tipo de vehículo (los fija RUÉ, no el propietario).
+  - ~~Montos de garantía por tipo de vehículo~~ → moto $150.000 · auto $250.000 · SUV/camioneta $350.000 · van/furgón $450.000 · minibús $600.000 · camión/remolque/especial $800.000 (decidido 2026-10-01; ya están en la app y en los Términos).
   - Política de cancelación: qué se devuelve y cuándo, si cancela el arrendatario o si cancela el propietario.
   - Garantía: si se cobra por la app o se coordina en persona.
   - Edad mínima y antigüedad de licencia para arrendar.
+- [ ] **Contador: IVA.** Pregúntale (y avísale la respuesta a Claude):
+  1. La comisión de 15 % y el cargo de servicio de 8 %, ¿se entienden **con IVA incluido** o **netos + IVA**?
+  2. ¿Quién emite boleta o factura, a quién y por qué monto (al arrendatario por el cargo de servicio, al propietario por la comisión)?
+  3. ¿El arriendo que cobra RUÉ por cuenta del propietario es ingreso de RUÉ o dinero de terceros? (Hoy el sistema lo trata como dinero de terceros: solo la comisión y el cargo de servicio cuentan como ingreso de RUÉ; la garantía nunca.)
+  4. ¿Qué tratamiento tiene la comisión que cobra Transbank?
+
+  Mientras no responda, la app **no muestra información tributaria** y los reportes dejan el IVA y el ingreso neto en blanco. En los Términos (cláusula 7) quedó marcado `[INCLUYEN IVA / SON NETOS…]` para completar.
 - [ ] **Seguros.** Conversa con una corredora de seguros sobre un seguro para arriendo entre particulares. Es **el riesgo más grande del negocio**: un choque sin cobertura puede quebrar a un propietario o a RUÉ. No lances al público sin tener esto claro.
 - [x] **Términos y Condiciones:** tu documento (`legal/fuente/…docx`) ya es el texto oficial de la app y del sitio (`legal/terminos.md`). Las notas internas del modelo quedaron en `legal/notas-internas.md` (no se publican).
 - [ ] **Abogado.** Llévale `legal/terminos.md` y `legal/privacidad.md`. Pídele que:
-  - Complete lo que está `[ENTRE CORCHETES]`: razón social, RUT, domicilio, canales, plazos de reclamo, descargos y liquidación, porcentaje y base de la comisión, garantía y plazos de conservación de datos.
+  - Complete lo que está `[ENTRE CORCHETES]`: razón social, RUT, domicilio, canales, plazos de reclamo, descargos y liquidación, IVA de la comisión (cláusula 7) y plazos de conservación de datos.
   - Valide que la **casilla C** (comunicar datos al arrendador) sea obligatoria para reservar, como decidiste. Tu propio modelo advierte "no condicionar el servicio a consentimientos para usos innecesarios"; el abogado debe confirmar que esta autorización es necesaria para el servicio.
   - Defina cómo aplicar el **derecho de retracto** (ver más abajo) y la política de cancelación.
   - Revise la ampliación de los Términos a **todos los tipos de vehículo** (licencias profesionales, camiones, carga).

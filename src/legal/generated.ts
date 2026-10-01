@@ -142,7 +142,19 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "El arrendador determina la tarifa del vehículo. La Operadora cobra una comisión de [PORCENTAJE DE COMISIÓN] sobre [BASE DE CÁLCULO], a cargo de [USUARIO QUE PAGA LA COMISIÓN]. Se informará si los impuestos están incluidos y el monto final en pesos chilenos antes del pago. La garantía se mostrará separadamente y no integra el precio del arriendo."
+      "text": "El arrendador determina la tarifa del vehículo (precio del arriendo). Por sus servicios, la Operadora cobra:"
+    },
+    {
+      "type": "li",
+      "text": "**Al arrendador:** una comisión de 15 % sobre el precio del arriendo, que se descuenta del monto que se le transfiere."
+    },
+    {
+      "type": "li",
+      "text": "**Al arrendatario:** un cargo de servicio de 8 % sobre el precio del arriendo, que se suma al precio y se paga junto con él."
+    },
+    {
+      "type": "p",
+      "text": "La base de cálculo de ambos porcentajes es el precio del arriendo, sin incluir la garantía, el cargo de servicio ni reembolsos. Los porcentajes [INCLUYEN IVA / SON NETOS Y SE LES AGREGA IVA — PENDIENTE DE DEFINIR CON CONTADOR]. Antes del pago se mostrará el desglose y el monto final en pesos chilenos. Los porcentajes vigentes al solicitar la reserva quedan fijos para esa reserva; un cambio posterior solo se aplica a reservas nuevas y se informará con anticipación. La garantía se mostrará separadamente, no integra el precio del arriendo ni el cargo de servicio y no constituye un ingreso de la Operadora."
     },
     {
       "type": "p",
@@ -158,11 +170,15 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
     },
     {
       "type": "p",
-      "text": "La garantía se constituirá mediante preautorización o bloqueo de cupo por [MONTO O CRITERIO DE GARANTÍA], procesado por Transbank (Webpay), y deberá aprobarse antes de la entrega. Si se utiliza un depósito efectivamente cobrado, esta modalidad deberá informarse de manera separada, indicando monto, custodio y condiciones de restitución; no se presentará como un simple bloqueo."
+      "text": "La garantía se constituirá mediante preautorización o bloqueo de cupo por el monto que la Operadora fija según el tipo de vehículo (no lo define el arrendador), procesado por Transbank (Webpay), y deberá aprobarse antes de la entrega. Si se utiliza un depósito efectivamente cobrado, esta modalidad deberá informarse de manera separada, indicando monto, custodio y condiciones de restitución; no se presentará como un simple bloqueo."
     },
     {
       "type": "p",
       "text": "La autorización se limita a la reserva identificada, al monto informado y a los conceptos previstos en estos términos. No constituye un mandato para realizar cargos ilimitados, disponer de otros fondos ni cobrar automáticamente cualquier suma indicada por el arrendador. La Operadora no solicitará claves bancarias ni entregará al arrendador el número completo de tarjeta o código de seguridad. El tratamiento de datos de pago se efectuará por el proveedor habilitado, conforme al flujo informado."
+    },
+    {
+      "type": "p",
+      "text": "Montos vigentes por tipo de vehículo: motocicleta $150.000; automóvil $250.000; SUV y camioneta $350.000; van y furgón $450.000; minibús $600.000; camión $800.000; remolque y vehículos especiales desde $800.000. La Operadora podrá ajustar estos montos o considerar otros criterios objetivos (por ejemplo, valor del vehículo o duración del arriendo) para reservas futuras; el monto aplicable a cada reserva es el que se muestra en la ficha antes de contratar y queda fijo para esa reserva."
     },
     {
       "type": "p",

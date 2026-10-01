@@ -13,8 +13,10 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { ATTRIBUTE_FIELDS, PURPOSES, VEHICLE_TYPES, vehicleTypeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
+import { guaranteeForType } from '@/lib/guarantee';
 import { clp } from '@/lib/format';
 import { photoUrl, supabase, VEHICLE_PHOTOS_BUCKET } from '@/lib/supabase';
+import { useAsync } from '@/lib/useAsync';
 import type { BookingPurpose, ListingStatus, Vehicle, VehicleAttributes, VehicleType } from '@/lib/types';
 import { colors, photoAspect, radius, space } from '@/theme';
 
@@ -35,7 +37,6 @@ type Form = {
   use_cases: BookingPurpose[];
   daily_price: string;
   weekly_price: string;
-  deposit: string;
   min_days: string;
   plate: string;
   km_per_day: string;
@@ -57,7 +58,6 @@ const EMPTY: Form = {
   use_cases: [],
   daily_price: '',
   weekly_price: '',
-  deposit: '',
   min_days: '1',
   plate: '',
   km_per_day: '',
@@ -129,6 +129,11 @@ export default function PublishScreen() {
   const [loading, setLoading] = useState(!!editId);
   const [loadError, setLoadError] = useState<unknown>(null);
   const [stepError, setStepError] = useState<string | null>(null);
+  const guarantee = useAsync(
+    () => guaranteeForType(form.vehicle_type as VehicleType),
+    [form.vehicle_type],
+    form.vehicle_type != null,
+  );
   const [saving, setSaving] = useState<ListingStatus | null>(null);
   const [declared, setDeclared] = useState(!!editId);
 
@@ -159,7 +164,6 @@ export default function PublishScreen() {
           use_cases: veh.use_cases ?? [],
           daily_price: thousands(String(veh.daily_price_clp)),
           weekly_price: veh.weekly_price_clp ? thousands(String(veh.weekly_price_clp)) : '',
-          deposit: veh.deposit_clp ? thousands(String(veh.deposit_clp)) : '',
           min_days: String(veh.min_days),
           plate: veh.plate ?? '',
           km_per_day: veh.km_per_day ? String(veh.km_per_day) : '',
@@ -244,7 +248,6 @@ export default function PublishScreen() {
         use_cases: form.use_cases,
         daily_price_clp: toInt(form.daily_price) as number,
         weekly_price_clp: toInt(form.weekly_price),
-        deposit_clp: toInt(form.deposit) ?? 0,
         min_days: toInt(form.min_days) ?? 1,
         plate: form.plate,
         km_per_day: toInt(form.km_per_day),
@@ -529,14 +532,11 @@ export default function PublishScreen() {
             onChangeText={(v) => set('weekly_price', thousands(v))}
             hint="Se aplica a arriendos de 7 días o más. Ideal para conductores de apps."
           />
-          <Input
-            label="Garantía (opcional)"
-            placeholder="150.000"
-            keyboardType="number-pad"
-            value={form.deposit}
-            onChangeText={(v) => set('deposit', thousands(v))}
-            hint="Monto que respalda el cuidado del vehículo y se devuelve al terminar."
-          />
+          {guarantee.data != null ? (
+            <Notice>
+              Garantía: {clp(guarantee.data)}. La define RUÉ según el tipo de vehículo y no se suma a lo que recibes.
+            </Notice>
+          ) : null}
           <Input
             label="Kilómetros por día (opcional)"
             placeholder="Vacío = libre"

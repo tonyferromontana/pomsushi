@@ -9,6 +9,7 @@
 - El archivo `store` (componente web de pedidos de sushi, ajeno a RUÉ) se conserva sin tocar. No borrarlo sin autorización.
 - **Código listo para lanzamiento (etapas 1–8 construidas).** Falta lo que depende del dueño: empresa, cuentas (Supabase, Transbank, Expo, Apple, Google), decisiones de negocio, abogado y seguros. Ver `LANZAMIENTO.md`.
 - Manual del administrador: `OPERACION.md` (verificaciones, pagos a propietarios, reportes, disputas, reembolsos).
+- **Configuración económica del MVP implementada (migración 0008, 2026-10-01):** comisiones versionadas 15 %/8 %, garantías por tipo fijadas por RUÉ, snapshot de precio por reserva, ledger inmutable, GMV/take rate, payouts T+2 con estados, domain events. **IVA pendiente de contador** (no se asume neto ni bruto). Ver §6 y §13.17.
 - **Arquitectura de negocio y salida (2026-10-01): ver §13.** Es la definición vigente del modelo económico y reemplaza cualquier supuesto anterior contradictorio. Comisión propietario **15 %**, fee arrendatario **8 %**, garantía la determina RUÉ (no el propietario), payout T+2 días hábiles. Contradicciones con el código actual y plan: §13.17.
 - **Decisiones del dueño (2026-10-01):** todos los tipos de vehículo; precio por días + el arrendador propone hora de entrega y devolución al aceptar; casilla C obligatoria. Pagos: **solo Webpay**, con cuotas. Pendientes: garantía (captura diferida u Oneclick de Transbank, esperando respuestas de Transbank, ver LANZAMIENTO.md) y retracto (a/b con abogado).
 - **Términos y Condiciones oficiales = documento del dueño** (`legal/fuente/Terminos_y_condiciones_arriendo_vehiculos.docx`, versión 2026-09-30), convertido a `legal/terminos.md`. Sus notas internas están en `legal/notas-internas.md` (no se publican). La app se alineó con él en la migración 0005.
@@ -46,7 +47,7 @@ src/
     publish.tsx              # Asistente de publicación en 5 pasos (crear / editar) + declaración de papeles al día
     notifications.tsx        # Bandeja de avisos
     verify.tsx               # Subir licencia / cédula (bucket privado documents)
-    payout.tsx               # Datos bancarios del propietario
+    payout.tsx               # Datos bancarios del propietario (estado de cada pago: en booking/[id])
     legal/[doc].tsx          # Términos / Privacidad (accesible sin sesión)
     vehicle-verify.tsx       # Acreditar dominio: Certificado de Anotaciones Vigentes + padrón (cláusula 4)
     handover.tsx             # Acta de entrega / devolución: km, combustible, observaciones, fotos (cláusula 11)
@@ -67,7 +68,8 @@ src/
     format.ts                # $ chileno, fechas (solo presentación)
     errors.ts                # friendlyError() / logError()
     useAsync.ts              # Carga con loading / error / reintento
-    analytics.ts             # track() — eventos definidos, sin proveedor
+    analytics.ts             # track(): consola + log_event() para vehicle_viewed / checkout_started
+    guarantee.ts             # guaranteeForType(): garantía vigente de RUÉ por tipo (solo informativa)
     push.ts                  # Registro de token push y apertura de reservas al tocar un aviso
   legal/generated.ts         # GENERADO por scripts/build-legal.mjs (no editar)
   theme.ts                   # Tokens de diseño (única fuente)
@@ -84,6 +86,7 @@ supabase/
   migrations/0005_terms_compliance.sql     # cumplimiento de Términos: dominio del vehículo, casillas, actas, bitácora de datos
   migrations/0006_owner_times_mandatory_consent.sql  # horas propuestas por el arrendador (accept_booking), casilla C obligatoria, Términos 2026-10-01
   migrations/0007_webpay.sql              # pagos Webpay: buy_order, cuotas, tipo de pago, proveedor en confirm/record
+  migrations/0008_economics.sql           # config económica versionada, guarantee_rules, snapshot, ledger, payouts T+2, domain_events, métricas
   functions/                 # Edge Functions (Deno): webpay-create, webpay-return, push-dispatch, delete-account
   functions/_shared/         # http, supabase (admin/usuario), webpay (API Transbank), redirect (+ pruebas)
   config.toml                # verify_jwt por función
@@ -93,6 +96,7 @@ supabase/
   tests/trust_safety.test.sql
   tests/terms_compliance.test.sql
   tests/webpay.test.sql
+  tests/economics.test.sql                # ejemplo 100.000 → GMV 100.000, fees 15.000/8.000, cobro 108.000, take rate 23 %
 eas.json                     # Perfiles de build: preview (APK interno) y production (tiendas)
 .github/workflows/ci.yml     # CI: legal al día, tsc, lint, pruebas de BD y de Edge Functions
 LANZAMIENTO.md               # Lista de tareas del dueño para lanzar
@@ -126,7 +130,7 @@ assets/images/               # icon, splash, android foreground, favicon (PROVIS
 | `payment_events` | eventos de pago (commit Webpay) sin datos de tarjeta | solo servidor |
 | `platform_settings` | comisiones y plazos configurables | solo servidor |
 
-Tablas de 0003/0004: `admins` (solo servidor), `legal_acceptances` (versión aceptada), `verification_requests` (licencia/cédula; aprueba un admin con `review_verification`), `reviews` (una por persona y reserva finalizada, vía `submit_review`), `reports` y `user_blocks` (exigidos por App Store), `notifications` (creadas por triggers; el usuario solo marca `read_at`), `push_tokens`, `payout_accounts` (banco, privado), `payouts` (se crea al finalizar una reserva pagada; admin marca pagado).
+Tablas de 0003/0004: `admins` (solo servidor), `legal_acceptances` (versión aceptada), `verification_requests` (licencia/cédula; aprueba un admin con `review_verification`), `reviews` (una por persona y reserva finalizada, vía `submit_review`), `reports` y `user_blocks` (exigidos por App Store), `notifications` (creadas por triggers; el usuario solo marca `read_at`), `push_tokens`, `payout_accounts` (banco, privado), `payouts` (desde 0008: se crea al devolver, elegible a T+2 días hábiles; admin marca pagado con `mark_payout_paid`).
 RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, `user_reputation`, `my_bookings`, `booking_vehicle`, `is_admin`, `is_blocked_with`. Solo servidor: `delete_account_data`, `record_payment_status`, `review_verification` (admin o service_role).
 `request_booking` y `search_vehicles` fueron reemplazadas en 0003 (bloqueos + licencia obligatoria configurable `require_verified_license`).
 
@@ -146,7 +150,14 @@ RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, 
 
 ## 6. Precios y máquina de estados (0002)
 
-**Precio (solo `compute_booking_price`)**: arriendo = días × precio día; si hay precio semanal y ≥7 días: min(normal, semanas × semanal + resto × día). `renter_fee = arriendo × renter_service_fee_pct`, `owner_commission = arriendo × owner_commission_pct`, `total = arriendo + renter_fee`, `owner_payout = arriendo − comisión`. La garantía se guarda aparte (no está incluida en el total; cómo se cobra/retiene es decisión pendiente). **Hoy en la base los % están en 0; el dueño definió 15 % (propietario) y 8 % (arrendatario) — pendiente de aplicar con configuración versionada (§13.17).** La garantía hoy la define el propietario (`vehicles.deposit_clp`): **contradice §13.5**, pendiente de migrar a `guarantee_rules`.
+**Precio (solo `compute_booking_price`, 0008)**: arriendo base = días × precio día; si hay precio semanal y ≥7 días: min(normal, semanas × semanal + resto × día). Extras = 0 (aún no existen). `gmv = base + extras`. Tasas desde `active_economic_config()` (tabla `economic_config_versions`, inmutable, la última con `effective_from <= now`): `owner_commission = round(gmv × owner_fee_rate)`, `renter_fee = round(gmv × renter_service_fee_rate)`, `total (cobrado) = gmv + renter_fee`, `owner_payout = gmv − owner_commission`, `platform_gross_revenue = owner_commission + renter_fee`. Garantía = `resolve_guarantee(tipo, contexto)` desde `guarantee_rules` (inmutable; `conditions` jsonb para reglas futuras, hoy solo `{}`), guardada en `bookings.deposit_clp` — **no** está en el total, ni en GMV ni en ingresos. Cada reserva guarda `pricing_snapshot` (insumos, tasas, versión, regla de garantía, resultados), `economic_config_id` y `guarantee_rule_id`; todo congelado por `enforce_booking_transition`.
+- Config vigente: `mvp-2026-10-01` = 15 % / 8 % / `tax_treatment = pending_accountant` / payout 2 días hábiles. Cambios: `publish_economic_config(...)` y `publish_guarantee_rule(...)` (admin o service_role, motivo obligatorio). Si `tax_treatment` ≠ pending, `compute_booking_price` falla a propósito hasta implementar el cálculo de IVA en una migración nueva.
+- `owner_commission_pct`/`renter_service_fee_pct` **ya no existen** en `platform_settings` (una sola fuente de verdad). Cambios a `platform_settings` quedan en `platform_settings_history`.
+- `vehicles.deposit_clp` es obsoleta: el propietario ya no tiene permiso de escribirla.
+- **Ledger** `ledger_entries` (inmutable, solo servidor; `idempotency_key` única): se escribe por triggers — pago aprobado → `payment_received`; reserva `confirmada` → `rental_base`, `rental_extra`, `owner_fee`, `renter_service_fee`, `owner_payout_due`; cancelada tras pagar → las mismas con signo negativo; pago `refunded` → `refund`; `mark_payout_paid` → `owner_payout_paid`; admin: `record_manual_refund`, `record_processing_cost`. Columnas `gross_amount_clp` (lo que se mueve), `net_amount_clp`/`tax_amount_clp` (NULL mientras el IVA está pendiente), `counts_as_gmv` (solo rental_*), `counts_as_revenue` (solo fees), garantía nunca GMV ni ingreso (constraints).
+- **Reporting** (solo admin/service_role): vista `booking_financials` (rental_base_amount, rental_extras, gmv_amount, owner_fee, renter_service_fee, charged_amount, guarantee_amount, tax_amount, payment_processing_cost, refunds, owner_payout, platform_gross_revenue, platform_net_revenue — neto NULL hasta conocer IVA y costo) y `marketplace_summary(desde, hasta)` (GMV e ingresos desde el ledger, take rate, búsquedas y sin resultado, reservas).
+- **Payouts**: estados `pending → eligible → scheduled → paid` + `held`, `failed`. Se crean al pasar a `devuelta` (o `finalizada` desde una disputa) con `eligible_on = add_business_days(fecha devolución CL, payout_delay de la reserva)` (salta fines de semana y `business_holidays`). Cron horario `promote_eligible_payouts()`. `disputada` → `held/open_dispute`; cancelada tras pagar → `held`. Admin: `schedule_payout`, `mark_payout_paid`, `hold_payout`, `release_payout`, `mark_payout_failed`. El propietario ve su payout (RLS) en el detalle de la reserva.
+- **Domain events** `domain_events` (solo servidor): triggers en profiles, vehicles, bookings, payments, payouts + `search_performed` desde `search_vehicles` (primera página, con `result_count`/`zero_result`). La app solo puede enviar `vehicle_viewed` y `checkout_started` vía `log_event()`.
 
 **Estados**
 
@@ -259,7 +270,8 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Verificación de dominio del vehículo (CAV + padrón, 6 meses) | ✅ (activar `require_vehicle_verification` al lanzar) |
 | Actas de entrega y devolución con fotos | ✅ |
 | Casillas A/C por reserva + bitácora de datos | ✅ |
-| Garantía con tarjeta de crédito (cláusulas 8–10) | ⏳ captura diferida u Oneclick de Transbank; esperando respuestas de Transbank |
+| Garantía con tarjeta de crédito (cláusulas 8–10) | ✅ monto por tipo fijado por RUÉ (`guarantee_rules`); ⏳ cobro/bloqueo: captura diferida u Oneclick, esperando respuestas de Transbank |
+| Configuración económica (15 %/8 % versionada, snapshot, ledger, GMV/take rate, payouts T+2, domain events) | ✅ 0008 + pruebas; ⏳ IVA (contador) |
 | Horas de entrega/devolución propuestas por el arrendador (cláusula 6) | ✅ precio por días |
 | Personas jurídicas como arrendador (cláusula 3–4) | ⏳ backlog |
 | Conductores adicionales (cláusula 5) | ⏳ backlog (hoy: solo el arrendatario conduce) |
@@ -271,7 +283,9 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Nivel | Hallazgo |
 |---|---|
 | Crítico (negocio) | Seguros: no hay cobertura definida para daños durante el arriendo. No lanzar al público sin resolverlo. |
-| Importante | Comisión y cargo de servicio en 0 %: definir antes de cobrar. |
+| Importante | IVA de comisión y cargo de servicio pendiente de contador: `tax_treatment = pending_accountant`, impuestos e ingreso neto en NULL, cláusula 7 con marcador. |
+| Importante | Ingreso reconocido al confirmar el pago (y revertido si se cancela después): validar criterio con el contador. |
+| Mejora | Feriados movibles de Chile: el admin los agrega en `business_holidays` cada año. |
 | Importante | Términos ampliados por Claude a todos los tipos de vehículo (decisión del dueño): falta revisión del abogado. |
 | Importante | Garantía por bloqueo de cupo (Términos 8–10) pendiente: Webpay captura diferida (plazo de captura limitado) u Oneclick. |
 | Importante | Derecho de retracto (10 días, cláusula 20) y política de cancelación no implementados en la app (cancelación de reservas pagadas es manual). Esperando decisión (a) dar retracto o (b) excluirlo con aviso. |
@@ -391,12 +405,14 @@ Cada una debe respetar legislación, contratos, privacidad, impuestos, regulaci�
 
 **Ya alineado:** precio, fees, montos y estados calculados y cambiados solo en el servidor; montos congelados por reserva (trigger); componentes separados en `bookings` (arriendo, fee arrendatario, comisión, total, payout, garantía — garantía fuera del total); `payments` + `payment_events` con idempotencia; `booking_events` (historial de estados); `vehicle_type` multimodal + `attributes` jsonb; reseñas atadas a reserva finalizada; verificaciones; RLS en todo; migraciones + tests; sin flota propia.
 
-**Contradice (corregir antes de la primera transacción real):**
-1. Fees en 0 % y en `platform_settings` sin versionado ni historial → aplicar 15 %/8 % con configuración versionada y auditada.
-2. Garantía definida por el propietario (`vehicles.deposit_clp`, campo en Publicar) → `guarantee_rules` por categoría, calculada server-side.
-3. Reservas sin `pricing_snapshot`/versión (se guardan montos, no qué reglas/tasas los produjeron) → snapshot por reserva.
-4. Sin ledger: los montos viven en columnas de `bookings`/`payments`/`payouts` → tabla `ledger_entries` escrita server-side (cargo, comisión, fee, reembolso, payout).
-5. Payout se crea al **finalizar** y con estados pendiente/pagado/retenido → crear al **devolver**, estados pending/eligible/scheduled/paid/held/failed, elegible T+2 días hábiles salvo retención.
-6. Sin domain events server-side ni registro de búsquedas (zero-result) → tabla `domain_events` + `search_performed` desde `search_vehicles`.
+**Corregido en 0008 (2026-10-01):**
+1. ✅ Fees 15 %/8 % en `economic_config_versions` (versionada, inmutable, auditada); fuera de `platform_settings`.
+2. ✅ Garantía por `guarantee_rules` (RUÉ), el propietario ya no la define.
+3. ✅ `pricing_snapshot` + `economic_config_id` + `guarantee_rule_id` por reserva.
+4. ✅ `ledger_entries` inmutable con bruto/neto/impuesto separados.
+5. ✅ Payout al devolver, estados pending/eligible/scheduled/paid/held/failed, T+2 días hábiles.
+6. ✅ `domain_events` + `search_performed` (zero-result) + `marketplace_summary`.
+
+**Pendiente de esa lista:** IVA (contador); costo real de Transbank por transacción (se registra a mano con `record_processing_cost`).
 
 **Aplazar (camino abierto):** organizaciones/Fleet/roles, RUÉ Pro, Fast Payout, risk_score, tasas por tier/categoría/campaña, ranking avanzado, featured listings, dashboard de métricas, estimated_earnings, normalización geográfica (region/zone), impuestos en el ledger (requiere contador), migrar el enum `vehicle_type` a tabla de categorías (hoy las reglas por categoría pueden colgar del enum; `ALTER TYPE … ADD VALUE` permite agregar tipos).

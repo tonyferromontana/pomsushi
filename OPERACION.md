@@ -17,22 +17,53 @@ insert into public.admins (user_id)
 select id from auth.users where email = '<tu-correo@dominio.cl>';
 ```
 
-## 2. Configurar comisiones y plazos
+## 2. Comisiones, garantías y plazos
 
-Ver valores actuales:
+### Comisiones (versionadas)
+
+Las comisiones no se editan: se **publica una versión nueva**. Las anteriores quedan como historial y cada reserva guarda la versión con que se calculó, así que un cambio solo afecta a reservas **nuevas**.
+
+Vigente hoy (MVP): 15 % al propietario, 8 % al arrendatario, IVA **pendiente de contador**, pago al propietario a 2 días hábiles.
+
+Ver la versión vigente y el historial:
+
+```sql
+select version, owner_fee_rate, renter_service_fee_rate, tax_treatment, payout_delay_business_days, effective_from, notes
+from public.economic_config_versions order by effective_from desc;
+```
+
+Publicar una versión nueva (ejemplo: 12 % propietario y 8 % arrendatario desde ya). Las tasas van como decimal (0.12 = 12 %) y el motivo es obligatorio:
+
+```sql
+set request.jwt.claim.role = 'service_role';
+select public.publish_economic_config('2027-01-promo', 0.12, 0.08, 2, 'Promoción de verano aprobada por Antonio');
+```
+
+### Garantías (las define RUÉ, no el propietario)
+
+Vigentes: moto $150.000 · auto $250.000 · SUV y camioneta $350.000 · van y furgón $450.000 · minibús $600.000 · camión, remolque y especial $800.000.
+
+```sql
+select vehicle_type, amount_clp, version, effective_from, notes
+from public.guarantee_rules order by vehicle_type, effective_from desc;
+```
+
+Cambiar la garantía de un tipo (solo reservas nuevas):
+
+```sql
+set request.jwt.claim.role = 'service_role';
+select public.publish_guarantee_rule('car', 300000, '2027-01', 'Subimos garantía de autos por siniestralidad');
+```
+
+Hoy la garantía **se muestra pero no se cobra** por la app (falta definir con Transbank cómo bloquear el cupo).
+
+### Plazos y exigencias
 
 ```sql
 select key, value, description from public.platform_settings order by key;
 ```
 
-Cambiar (ejemplo: 10 % de comisión al propietario y 5 % de cargo al arrendatario):
-
-```sql
-update public.platform_settings set value = '10', updated_at = now() where key = 'owner_commission_pct';
-update public.platform_settings set value = '5',  updated_at = now() where key = 'renter_service_fee_pct';
-```
-
-Solo afecta a reservas **nuevas**; las ya creadas mantienen su precio.
+Cada cambio en `platform_settings` queda registrado en `platform_settings_history` (qué, antes, después y cuándo).
 
 Exigir licencia verificada para arrendar (recomendado al lanzar):
 
@@ -117,36 +148,58 @@ select public.review_vehicle_verification('<id>', false, 'El RUT del certificado
 
 Cada día a las 7:15 el sistema quita la verificación a los vehículos cuyo plazo venció, los pausa (si la exigencia está activa) y avisa al propietario.
 
-## 5. Pagar a los propietarios
+## 5. Pagar a los propietarios (T+2 días hábiles)
 
-Cuando una reserva pagada se finaliza, se crea un pago pendiente al propietario.
+Cuando el propietario marca la reserva pagada como **devuelta**, se crea su pago con estado `pending` y fecha `eligible_on` = 2 días hábiles después. Cada hora el sistema pasa a `eligible` los que ya cumplieron la fecha. Estados:
 
-Pendientes, con los datos bancarios:
+| Estado | Qué significa |
+|---|---|
+| `pending` | Esperando los 2 días hábiles |
+| `eligible` | Listo para transferir |
+| `scheduled` | Transferencia preparada en tu banco (opcional) |
+| `paid` | Transferido |
+| `held` | Retenido (disputa, daño reportado, revisión, etc.) |
+| `failed` | La transferencia rebotó |
+
+Los bloques que usan `select public.…` empiezan con `set request.jwt.claim.role = 'service_role';`: esa línea le dice a la base que eres el administrador. Pégala siempre junto con el bloque.
+
+Listos para transferir, con los datos bancarios:
 
 ```sql
-select po.id, po.amount_clp, po.created_at, p.display_name,
+select po.id, po.amount_clp, po.eligible_on, p.display_name,
        a.holder_name, a.holder_rut, a.bank, a.account_type, a.account_number, a.email
 from public.payouts po
 join public.profiles p on p.id = po.owner_id
 left join public.payout_accounts a on a.user_id = po.owner_id
-where po.status = 'pendiente'
-order by po.created_at;
+where po.status in ('eligible', 'scheduled')
+order by po.eligible_on;
 ```
 
 Si `holder_name` sale vacío, el propietario no ha cargado su cuenta: escríbele para que la complete en **Perfil → Datos bancarios**.
 
-Después de transferir desde tu banco, márcalo como pagado:
+Después de transferir desde tu banco (queda registrado en el libro contable interno):
 
 ```sql
-update public.payouts
-set status = 'pagado', paid_at = now(), reference = '<número de comprobante>'
-where id = '<id-del-pago>';
+set request.jwt.claim.role = 'service_role';
+select public.mark_payout_paid('<id-del-pago>', '<número de comprobante>');
 ```
 
-Retener un pago (por ejemplo, si hay un reclamo abierto):
+Otros:
 
 ```sql
-update public.payouts set status = 'retenido' where id = '<id-del-pago>';
+set request.jwt.claim.role = 'service_role';
+select public.schedule_payout('<id>');                                   -- transferencia preparada
+select public.hold_payout('<id>', 'damage_reported', 'Rayón en puerta');  -- retener
+select public.release_payout('<id>', 'Revisado: sin daños');              -- liberar
+select public.mark_payout_failed('<id>', 'Cuenta cerrada');               -- rebotó
+```
+
+Motivos de retención: `damage_reported`, `open_dispute`, `late_return`, `unpaid_extra_charge`, `fraud_review`, `payment_issue`. Una disputa retiene el pago sola; una reserva cancelada después del pago también.
+
+**Feriados:** el cálculo de días hábiles salta sábados, domingos y los feriados de la tabla `business_holidays` (vienen los de fecha fija de 2026 y 2027). Agrega cada año los movibles:
+
+```sql
+insert into public.business_holidays (day, name) values ('2026-06-29', 'San Pedro y San Pablo');
 ```
 
 ## 6. Reportes de usuarios
@@ -238,7 +291,19 @@ select buy_order, amount_clp, status, payment_type, installments, created_at
 from public.payments where booking_id = '<id-de-la-reserva>' order by created_at;
 ```
 
-Después cancela la reserva (bloque del punto 7) si no estaba cancelada.
+Después cancela la reserva (bloque del punto 7) si no estaba cancelada, y registra el reembolso en el libro interno:
+
+```sql
+set request.jwt.claim.role = 'service_role';
+select public.record_manual_refund('<id-de-la-reserva>', <monto>, '<código de anulación de Transbank>');
+```
+
+Cuando Transbank te liquide, puedes registrar su comisión por reserva (sirve para calcular el ingreso neto):
+
+```sql
+set request.jwt.claim.role = 'service_role';
+select public.record_processing_cost('<id-de-la-reserva>', <monto>, '<referencia de la liquidación>');
+```
 
 Pagos que requieren revisión manual (la anulación automática falló):
 
@@ -249,7 +314,31 @@ where e.provider = 'webpay' and e.error like '%anulación pendiente%'
 order by e.created_at desc;
 ```
 
-## 9. Salud del sistema
+## 9. Números del negocio
+
+Resumen de un período (fechas de Chile). GMV = arriendos pagados antes de comisiones (sin garantía ni cargo de servicio); ingreso bruto = comisión 15 % + cargo 8 %; take rate = ingreso / GMV:
+
+```sql
+set request.jwt.claim.role = 'service_role';
+select jsonb_pretty(public.marketplace_summary('2026-10-01', '2026-10-31'));
+```
+
+Detalle por reserva (montos congelados, versión de comisiones, reembolsos, estado del pago al propietario):
+
+```sql
+select * from public.booking_financials order by created_at desc limit 50;
+```
+
+El ingreso neto y el IVA aparecen vacíos hasta que el contador defina el tratamiento tributario. Eso es intencional: no se inventan.
+
+Eventos del negocio (búsquedas, búsquedas sin resultado, reservas, pagos, devoluciones):
+
+```sql
+select event_type, count(*) from public.domain_events
+where occurred_at >= now() - interval '7 days' group by 1 order by 2 desc;
+```
+
+## 10. Salud del sistema
 
 Tareas automáticas (vencimientos cada 10 minutos):
 

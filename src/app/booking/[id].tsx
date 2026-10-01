@@ -29,7 +29,7 @@ import { BOOKING_FLOW, BOOKING_STATUS, purposeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { clp, dateRange, plural, shortDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import type { Booking, BookingEvent, BookingStatus, Handover, Profile } from '@/lib/types';
+import type { Booking, BookingEvent, BookingStatus, Handover, Payout, Profile } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { colors, radius, space } from '@/theme';
 
@@ -41,6 +41,7 @@ type Detail = {
   reviewed: boolean;
   paymentPending: boolean;
   paidWith: { payment_type: string | null; installments: number | null } | null;
+  payout: Pick<Payout, 'status' | 'eligible_on' | 'paid_at'> | null;
   handovers: (Handover & { photoUrls: string[] })[];
 };
 
@@ -49,12 +50,14 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
   if (error) throw error;
   const booking = data as Booking;
   const otherId = booking.owner_id === userId ? booking.renter_id : booking.owner_id;
-  const [other, events, vehicle, review, payments] = await Promise.all([
+  const [other, events, vehicle, review, payments, payout] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', otherId).maybeSingle(),
     supabase.from('booking_events').select('*').eq('booking_id', id).order('created_at'),
     supabase.rpc('booking_vehicle', { p_booking_id: id }),
     supabase.from('reviews').select('id').eq('booking_id', id).eq('author_id', userId).maybeSingle(),
     supabase.from('payments').select('status, payment_type, installments').eq('booking_id', id).in('status', ['pending', 'in_process', 'approved']),
+    // RLS: solo el propietario ve su pago; para el arrendatario vuelve vacío.
+    supabase.from('payouts').select('status, eligible_on, paid_at').eq('booking_id', id).maybeSingle(),
   ]);
   const handoverRes = await supabase.from('booking_handovers').select('*').eq('booking_id', id).order('created_at');
   if (handoverRes.error) logError('booking.handovers', handoverRes.error);
@@ -73,6 +76,7 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
   if (vehicle.error) logError('booking.vehicle', vehicle.error);
   if (review.error) logError('booking.review', review.error);
   if (payments.error) logError('booking.payments', payments.error);
+  if (payout.error) logError('booking.payout', payout.error);
   const v = (vehicle.data as { title: string }[] | null)?.[0];
   return {
     booking,
@@ -82,8 +86,25 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
     reviewed: !!review.data,
     paymentPending: (payments.data ?? []).some((p) => p.status === 'pending' || p.status === 'in_process'),
     paidWith: (payments.data ?? []).find((p) => p.status === 'approved') ?? null,
+    payout: (payout.data as Detail['payout']) ?? null,
     handovers,
   };
+}
+
+function payoutLabel(p: NonNullable<Detail['payout']>): string {
+  switch (p.status) {
+    case 'pending':
+      return p.eligible_on ? `Desde el ${shortDate(p.eligible_on)}` : 'Pendiente';
+    case 'eligible':
+    case 'scheduled':
+      return 'En proceso';
+    case 'paid':
+      return p.paid_at ? `Pagado el ${shortDate(p.paid_at)}` : 'Pagado';
+    case 'held':
+      return 'Retenido mientras revisamos';
+    case 'failed':
+      return 'Transferencia fallida: revisa tus datos bancarios';
+  }
 }
 
 type Action = {
@@ -222,7 +243,7 @@ export default function BookingScreen() {
     setActionError(null);
     setPayNotice(null);
     try {
-      track('checkout_started', { total: b.total_clp });
+      track('checkout_started', { total: b.total_clp }, { bookingId: b.id, vehicleId: b.vehicle_id });
       const redirectUrl = Linking.createURL('pago');
       const { data: res, error: err } = await supabase.functions.invoke('webpay-create', {
         body: { booking_id: b.id, redirect_url: redirectUrl },
@@ -473,9 +494,10 @@ export default function BookingScreen() {
             {b.owner_commission_clp > 0 ? <Row label="Comisión RUÉ" value={`-${clp(b.owner_commission_clp)}`} /> : null}
             <Divider spacing={space.sm} />
             <Row label="Recibes" value={clp(b.owner_payout_clp)} strong />
+            {data.payout ? <Row label="Pago a tu cuenta" value={payoutLabel(data.payout)} /> : null}
           </>
         )}
-        {b.deposit_clp > 0 ? <Row label="Garantía (se coordina con el propietario)" value={clp(b.deposit_clp)} /> : null}
+        {b.deposit_clp > 0 ? <Row label="Garantía (no incluida en el total)" value={clp(b.deposit_clp)} /> : null}
       </View>
 
       {b.status === 'confirmada' || b.status === 'en_curso' || data.handovers.length > 0 ? (

@@ -14,7 +14,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('20000000-0000-0000-0000-0000000000ad', 'admin@test.cl', '{"display_name":"Admin"}');
 insert into public.admins (user_id) values ('20000000-0000-0000-0000-0000000000ad');
 -- Este archivo usa comisión y cargo en 0 % (independiente de otras pruebas)
-update public.platform_settings set value = '0' where key in ('owner_commission_pct', 'renter_service_fee_pct');
+select set_config('request.jwt.claim.role', 'service_role', false);
+select public.publish_economic_config('test-trust_safety', 0, 0, 2, 'Prueba trust_safety: sin comisiones');
+select set_config('request.jwt.claim.role', '', false);
 
 do $$ begin
   if (select count(*) from public.legal_acceptances where user_id in

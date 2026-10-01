@@ -28,6 +28,7 @@ import { track } from '@/lib/analytics';
 import { attributeSummary, PURPOSES, purposeLabel, vehicleTypeLabel } from '@/lib/catalog';
 import { useAuth } from '@/lib/auth';
 import { friendlyError, logError } from '@/lib/errors';
+import { guaranteeForType } from '@/lib/guarantee';
 import { clp, memberSince, plural } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { BookingPurpose, Profile, Quote, Vehicle, VehiclePhoto as Photo } from '@/lib/types';
@@ -35,15 +36,19 @@ import { useAsync } from '@/lib/useAsync';
 import { colors, photoAspect, radius, space } from '@/theme';
 
 type Reputation = { rating_avg: number | null; rating_count: number; completed_bookings: number };
-type Detail = { vehicle: Vehicle; photos: Photo[]; owner: Profile | null; reputation: Reputation | null };
+type Detail = { vehicle: Vehicle; photos: Photo[]; owner: Profile | null; reputation: Reputation | null; guarantee: number | null };
 
 async function loadDetail(id: string): Promise<Detail> {
   const { data: vehicle, error } = await supabase.from('vehicles').select('*').eq('id', id).single();
   if (error) throw error;
-  const [photos, owner, rep] = await Promise.all([
+  const [photos, owner, rep, guarantee] = await Promise.all([
     supabase.from('vehicle_photos').select('*').eq('vehicle_id', id).order('position'),
     supabase.from('profiles').select('*').eq('id', vehicle.owner_id).maybeSingle(),
     supabase.rpc('user_reputation', { p_user_id: vehicle.owner_id }),
+    guaranteeForType(vehicle.vehicle_type).catch((e: unknown) => {
+      logError('vehicle.guarantee', e);
+      return null;
+    }),
   ]);
   if (photos.error) throw photos.error;
   if (owner.error) logError('vehicle.owner', owner.error);
@@ -53,6 +58,7 @@ async function loadDetail(id: string): Promise<Detail> {
     photos: (photos.data ?? []) as Photo[],
     owner: (owner.data as Profile) ?? null,
     reputation: (rep.data as Reputation | null) ?? null,
+    guarantee,
   };
 }
 
@@ -75,7 +81,7 @@ export default function VehicleScreen() {
   const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
-    if (data) track('vehicle_view', { vehicle_type: data.vehicle.vehicle_type });
+    if (data) track('vehicle_view', { vehicle_type: data.vehicle.vehicle_type }, { vehicleId: data.vehicle.id });
   }, [data]);
 
   // El precio lo calcula SIEMPRE el servidor. La cotización queda asociada a las fechas pedidas.
@@ -240,7 +246,7 @@ export default function VehicleScreen() {
         <View style={{ gap: space.xs }}>
           <Row label="Precio por día" value={clp(v.daily_price_clp)} />
           {v.weekly_price_clp ? <Row label="Precio por semana" value={clp(v.weekly_price_clp)} /> : null}
-          {v.deposit_clp > 0 ? <Row label="Garantía (se coordina al retirar)" value={clp(v.deposit_clp)} /> : null}
+          {data.guarantee ? <Row label="Garantía (no se suma al total)" value={clp(data.guarantee)} /> : null}
           {v.plate ? <Row label="Patente" value={v.plate} /> : null}
           <Row label="Kilometraje" value={v.km_per_day ? `${v.km_per_day} km por día` : 'Libre'} />
           <Row label="Combustible" value={v.fuel_policy === 'lleno' ? 'Se devuelve con estanque lleno' : 'Se devuelve con el mismo nivel'} />
@@ -326,7 +332,8 @@ export default function VehicleScreen() {
                   <Row label="Total" value={clp(quote.total_clp)} strong />
                   {quote.deposit_clp > 0 ? (
                     <Text variant="caption" color="textSecondary">
-                      El propietario pide una garantía de {clp(quote.deposit_clp)} que se coordina al retirar y se devuelve si todo está en orden.
+                      Garantía de {clp(quote.deposit_clp)}, definida por RUÉ para este tipo de vehículo. No está incluida en el
+                      total ni se cobra en este pago.
                     </Text>
                   ) : null}
                   <Text variant="caption" color="textSecondary">

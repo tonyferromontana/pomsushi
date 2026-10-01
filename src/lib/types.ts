@@ -86,6 +86,7 @@ export type Vehicle = {
   use_cases: BookingPurpose[];
   daily_price_clp: number;
   weekly_price_clp: number | null;
+  /** @deprecated Desde 0008 la garantía la define RUÉ (guarantee_for_type). */
   deposit_clp: number;
   min_days: number;
   verified: boolean;
@@ -152,13 +153,32 @@ export type Booking = {
   owner_commission_clp: number;
   total_clp: number;
   owner_payout_clp: number;
+  /** Garantía fijada por RUÉ (guarantee_rules). No es ingreso ni está en total_clp. */
   deposit_clp: number;
+  rental_extras_clp: number;
+  /** GMV = arriendo + extras, antes de comisiones (sin garantía ni cargo de servicio). */
+  gmv_clp: number | null;
+  platform_gross_revenue_clp: number | null;
   renter_message: string | null;
   expires_at: string | null;
   pickup_time: string | null; // 'HH:MM:SS', la propone el propietario al aceptar
   return_time: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type PayoutStatus = 'pending' | 'eligible' | 'scheduled' | 'paid' | 'held' | 'failed';
+
+/** Pago de RUÉ al propietario: se crea al devolver y es elegible a T+2 días hábiles. */
+export type Payout = {
+  id: string;
+  booking_id: string;
+  owner_id: string;
+  amount_clp: number;
+  status: PayoutStatus;
+  eligible_on: string | null;
+  paid_at: string | null;
+  created_at: string;
 };
 
 export type BookingEvent = {
@@ -186,5 +206,6 @@ export type Quote = {
   rental_clp: number;
   renter_fee_clp: number;
   total_clp: number;
+  /** Garantía (no incluida en total_clp) */
   deposit_clp: number;
 };

@@ -19,19 +19,20 @@ do $$ begin
   end if;
 end $$;
 
--- Configuración de prueba: 10% comisión, 5% cargo de servicio
-update public.platform_settings set value = '10' where key = 'owner_commission_pct';
-update public.platform_settings set value = '5'  where key = 'renter_service_fee_pct';
+-- Configuración de prueba: 10% comisión, 5% cargo de servicio (versión económica nueva)
+select set_config('request.jwt.claim.role', 'service_role', false);
+select public.publish_economic_config('test-booking-flow', 0.10, 0.05, 2, 'Prueba booking_flow');
+select set_config('request.jwt.claim.role', '', false);
 
 -- ---------------------------------------------------------------- Propietario
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
 set role authenticated;
 
 insert into public.vehicles (id, owner_id, vehicle_type, status, title, brand, model, year, city,
-                             attributes, daily_price_clp, weekly_price_clp, deposit_clp)
+                             attributes, daily_price_clp, weekly_price_clp)
 values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'pickup',
         'publicado', 'Hilux 4x4 para la nieve', 'Toyota', 'Hilux', 2021, 'Santiago',
-        '{"transmission":"manual","fuel":"diesel","seats":5,"traction":"4x4"}', 50000, 300000, 200000);
+        '{"transmission":"manual","fuel":"diesel","seats":5,"traction":"4x4"}', 50000, 300000);
 
 do $$ begin
   begin

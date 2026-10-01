@@ -14,7 +14,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
 insert into public.admins (user_id) values ('40000000-0000-0000-0000-0000000000ad');
 update public.platform_settings set value = 'false' where key = 'require_verified_license';
 update public.platform_settings set value = 'true' where key = 'require_vehicle_verification';
-update public.platform_settings set value = '0' where key in ('owner_commission_pct', 'renter_service_fee_pct');
+select set_config('request.jwt.claim.role', 'service_role', false);
+select public.publish_economic_config('test-terms_compliance', 0, 0, 2, 'Prueba terms_compliance: sin comisiones');
+select set_config('request.jwt.claim.role', '', false);
 
 -- ------------------------------------------------ Publicar exige verificación
 select pg_temp.as_user('40000000-0000-0000-0000-00000000000a');

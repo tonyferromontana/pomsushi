@@ -10,7 +10,9 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('80000000-0000-0000-0000-00000000000a', 'o7@test.cl', '{"display_name":"Owner7"}'),
   ('80000000-0000-0000-0000-00000000000b', 'r7@test.cl', '{"display_name":"Renter7"}');
 update public.platform_settings set value = 'false' where key in ('require_verified_license', 'require_vehicle_verification');
-update public.platform_settings set value = '0' where key in ('owner_commission_pct', 'renter_service_fee_pct');
+select set_config('request.jwt.claim.role', 'service_role', false);
+select public.publish_economic_config('test-webpay', 0, 0, 2, 'Prueba webpay: sin comisiones');
+select set_config('request.jwt.claim.role', '', false);
 
 select pg_temp.as_user('80000000-0000-0000-0000-00000000000a');
 set role authenticated;
