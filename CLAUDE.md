@@ -491,6 +491,8 @@ Producto **separado** del precio del arriendo. No inventar coberturas. Antes de 
 
 Proyecto Supabase del dueño (creado 2026-10-01): `https://wxkekdlmhimdijewtsef.supabase.co` (ref `wxkekdlmhimdijewtsef`). Verificar que `SUPABASE_PROJECT_REF` coincida; si no, preguntar antes de tocar nada.
 
+**Avance 2026-10-02:** red OK (Supabase, Expo). `SUPABASE_PROJECT_REF`/URL coinciden; proyecto `rue` ACTIVE_HEALTHY, vacío (0 tablas, sin registro de migraciones) → dry-run lista las 9 pendientes. **No aplicadas**: el control de permisos de la sesión bloqueó escribir en la base real; requiere que el dueño lo autorice. `EXPO_TOKEN` presente pero **inválido** ("The bearer token is invalid") → regenerar. Faltan `SUPABASE_DB_PASSWORD` (opcional: el script usa la Management API) y las 4 variables de Apple (cuenta Apple Developer pendiente).
+
 Variables esperadas: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_PROJECT_REF`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `EXPO_TOKEN`, `EXPO_APPLE_TEAM_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_API_KEY_P8`. Nunca imprimirlas en logs ni commitearlas.
 
 1. Red: `curl -s -o /dev/null -w '%{http_code}' https://api.supabase.com` (y expo.dev). Si da 000, pedir al dueño el acceso de red (BETA.md paso 5).
