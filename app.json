@@ -13,7 +13,8 @@
       "bundleIdentifier": "cl.rue.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "RUÉ usa tus fotos para mostrar tu vehículo en la publicación.",
-        "NSCameraUsageDescription": "RUÉ usa la cámara para fotografiar tu vehículo y tus documentos de verificación."
+        "NSCameraUsageDescription": "RUÉ usa la cámara para fotografiar tu vehículo y tus documentos de verificación.",
+        "NSLocationWhenInUseUsageDescription": "RUÉ usa tu ubicación aproximada solo cuando tú lo pides: para mostrarte vehículos cerca o para marcar el punto aproximado de entrega de tu vehículo."
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -28,12 +29,13 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_BACKGROUND_LOCATION"
       ]
     },
     "web": {
@@ -64,6 +66,15 @@
         {
           "color": "#D7FF3F",
           "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "RUÉ usa tu ubicación aproximada solo cuando tú lo pides: para mostrarte vehículos cerca o para marcar el punto aproximado de entrega de tu vehículo.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
         }
       ]
     ],

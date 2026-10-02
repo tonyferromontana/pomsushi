@@ -12,6 +12,7 @@ import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
 import { PURPOSES, VEHICLE_TYPES } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
+import { getApproxLocation, type ApproxPoint } from '@/lib/location';
 import { supabase } from '@/lib/supabase';
 import { useAsync } from '@/lib/useAsync';
 import type { BookingPurpose, VehicleSearchResult, VehicleType } from '@/lib/types';
@@ -25,7 +26,12 @@ type Filters = {
   start: string | null;
   end: string | null;
   purpose: BookingPurpose | null;
+  /** "Cerca de mí": punto aproximado del teléfono (no se guarda) y radio en km */
+  near: ApproxPoint | null;
+  radiusKm: number;
 };
+
+const RADII = [10, 25, 50];
 
 async function fetchPage(f: Filters, offset: number): Promise<VehicleSearchResult[]> {
   const { data, error } = await supabase.rpc('search_vehicles', {
@@ -36,13 +42,44 @@ async function fetchPage(f: Filters, offset: number): Promise<VehicleSearchResul
     p_purpose: f.purpose,
     p_limit: PAGE_SIZE,
     p_offset: offset,
+    p_near_lat: f.near?.lat ?? null,
+    p_near_lng: f.near?.lng ?? null,
+    p_radius_km: f.near ? f.radiusKm : null,
   });
   if (error) throw error;
   return (data ?? []) as VehicleSearchResult[];
 }
 
 export default function ExploreScreen() {
-  const [filters, setFilters] = useState<Filters>({ type: null, city: '', start: null, end: null, purpose: null });
+  const [filters, setFilters] = useState<Filters>({
+    type: null,
+    city: '',
+    start: null,
+    end: null,
+    purpose: null,
+    near: null,
+    radiusKm: 25,
+  });
+  const [locating, setLocating] = useState(false);
+  const [nearError, setNearError] = useState<string | null>(null);
+
+  const toggleNear = async () => {
+    setNearError(null);
+    if (filters.near) {
+      setFilters((f) => ({ ...f, near: null }));
+      return;
+    }
+    setLocating(true);
+    try {
+      const near = await getApproxLocation();
+      setFilters((f) => ({ ...f, near }));
+    } catch (e) {
+      logError('explore.location', e);
+      setNearError(e instanceof Error ? e.message : friendlyError(e));
+    } finally {
+      setLocating(false);
+    }
+  };
   const [cityDraft, setCityDraft] = useState('');
   const { userId } = useAuth();
   const [unread, setUnread] = useState(0);
@@ -189,6 +226,44 @@ export default function ExploreScreen() {
         autoCorrect={false}
       />
 
+      <View style={{ gap: space.sm }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: space.sm, paddingHorizontal: gutter }}
+          style={{ marginHorizontal: -gutter }}
+        >
+          <Chip
+            label={locating ? 'Buscando tu ubicación…' : 'Cerca de mí'}
+            selected={!!filters.near}
+            onPress={toggleNear}
+            leading={
+              <Ionicons name="navigate-outline" size={16} color={filters.near ? colors.textInverse : colors.textSecondary} />
+            }
+          />
+          {filters.near
+            ? RADII.map((r) => (
+                <Chip
+                  key={r}
+                  label={`${r} km`}
+                  selected={filters.radiusKm === r}
+                  onPress={() => setFilters((f) => ({ ...f, radiusKm: r }))}
+                />
+              ))
+            : null}
+        </ScrollView>
+        {nearError ? (
+          <Text variant="caption" color="warning">
+            {nearError}
+          </Text>
+        ) : null}
+        {filters.near ? (
+          <Text variant="caption" color="textSecondary">
+            Usamos tu ubicación aproximada solo para ordenar esta búsqueda; no la guardamos.
+          </Text>
+        ) : null}
+      </View>
+
       <DateRangeField
         start={filters.start}
         end={filters.end}
@@ -236,14 +311,16 @@ export default function ExploreScreen() {
       );
     }
     if (error) return <ErrorState message={friendlyError(error)} onRetry={first.reload} />;
-    const filtered = filters.type || filters.city || filters.start || filters.purpose;
+    const filtered = filters.type || filters.city || filters.start || filters.purpose || filters.near;
     return (
       <EmptyState
         icon="search-outline"
         title={filtered ? 'No encontramos nada con esos filtros' : 'Todavía no hay vehículos publicados'}
         body={
           filtered
-            ? 'Prueba con otras fechas, otra comuna u otro tipo de vehículo.'
+            ? filters.near
+              ? 'No hay vehículos con punto de entrega en ese radio. Prueba con un radio mayor o busca por comuna.'
+              : 'Prueba con otras fechas, otra comuna u otro tipo de vehículo.'
             : '¿Tienes algo parado? Publícalo en "Mis vehículos" y hazlo producir.'
         }
       />

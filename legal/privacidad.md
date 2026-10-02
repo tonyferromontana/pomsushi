@@ -21,7 +21,11 @@ En RUÉ cuidamos tus datos personales. Esta política explica qué datos recolec
 - **Mensajes y reseñas** que envíes dentro de la app, y las ofertas de precio de cada negociación.
 - **Datos técnicos:** tipo de dispositivo, token para enviarte notificaciones y registros de uso necesarios para que el servicio funcione y sea seguro.
 
-No recolectamos tu ubicación GPS ni usamos reconocimiento facial o biometría.
+- **Ubicación aproximada (opcional, solo si tú lo pides):**
+  - Si usas **"Cerca de mí"**, tu teléfono nos envía tu ubicación redondeada a cerca de 1 km solo para ordenar esa búsqueda por distancia. No la guardamos.
+  - Si eres Propietario y eliges **aparecer en "cerca de mí"**, guardamos un punto aproximado del lugar de entrega, redondeado a cerca de 1 km. Ese punto no se muestra a nadie: los demás usuarios solo ven a cuántos kilómetros está el vehículo. Puedes quitarlo cuando quieras y se borra si eliminas tu cuenta.
+
+No seguimos tu ubicación en segundo plano y no usamos reconocimiento facial ni biometría.
 
 ## 3. Para qué los usamos
 

@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth';
 import { ATTRIBUTE_FIELDS, PURPOSES, VEHICLE_TYPES, vehicleTypeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { guaranteeForType } from '@/lib/guarantee';
+import { getApproxLocation, type ApproxPoint } from '@/lib/location';
 import { clp, digits, thousands, toInt } from '@/lib/format';
 import { photoUrl, supabase, VEHICLE_PHOTOS_BUCKET } from '@/lib/supabase';
 import { useAsync } from '@/lib/useAsync';
@@ -129,6 +130,35 @@ export default function PublishScreen() {
     form.vehicle_type != null,
   );
   const [saving, setSaving] = useState<ListingStatus | null>(null);
+  // Punto aproximado para "cerca de mí" (opcional). El servidor lo redondea a ~1 km y nunca lo muestra.
+  const [point, setPoint] = useState<ApproxPoint | null>(null);
+  const [clearPoint, setClearPoint] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [pointError, setPointError] = useState<string | null>(null);
+  const savedPoint = useAsync(
+    async () => {
+      const { data, error } = await supabase.rpc('vehicle_has_location', { p_vehicle_id: vehicleId });
+      if (error) throw error;
+      return data as boolean;
+    },
+    [vehicleId],
+    !!editId,
+  );
+  const hasPoint = !clearPoint && (point !== null || savedPoint.data === true);
+
+  const usePhoneLocation = async () => {
+    setLocating(true);
+    setPointError(null);
+    try {
+      setPoint(await getApproxLocation());
+      setClearPoint(false);
+    } catch (e) {
+      logError('publish.location', e);
+      setPointError(e instanceof Error ? e.message : friendlyError(e));
+    } finally {
+      setLocating(false);
+    }
+  };
   const [declared, setDeclared] = useState(!!editId);
 
   useEffect(() => {
@@ -282,6 +312,14 @@ export default function PublishScreen() {
       if (removed.length > 0) {
         const rm = await supabase.storage.from(VEHICLE_PHOTOS_BUCKET).remove(removed);
         if (rm.error) logError('publish.removePhotos', rm.error);
+      }
+
+      if (point) {
+        const loc = await supabase.rpc('set_vehicle_location', { p_vehicle_id: vehicleId, p_lat: point.lat, p_lng: point.lng });
+        if (loc.error) throw loc.error;
+      } else if (clearPoint) {
+        const loc = await supabase.rpc('clear_vehicle_location', { p_vehicle_id: vehicleId });
+        if (loc.error) throw loc.error;
       }
 
       if (!editId && status === 'publicado') track('listing_completed', { vehicle_type: form.vehicle_type });
@@ -555,6 +593,42 @@ export default function PublishScreen() {
             maxLength={160}
             hint="Un punto de referencia. No pongas tu dirección exacta."
           />
+          <View style={{ gap: space.sm }}>
+            <Text variant="label" color="textSecondary">
+              Aparecer en «cerca de mí» (opcional)
+            </Text>
+            <Text variant="caption" color="textSecondary">
+              Usa la ubicación de tu teléfono estando en el lugar de entrega. Guardamos solo un punto aproximado (± 1 km):
+              nadie ve tu ubicación, solo a cuántos kilómetros está el vehículo.
+            </Text>
+            {hasPoint ? (
+              <Notice tone="success">
+                {point ? 'Punto aproximado listo. Se guarda al publicar.' : 'Tu vehículo ya aparece en las búsquedas cercanas.'}
+              </Notice>
+            ) : null}
+            <View style={styles.wrap}>
+              <Button
+                label={hasPoint ? 'Actualizar con mi ubicación' : 'Usar mi ubicación aproximada'}
+                variant="secondary"
+                icon="locate-outline"
+                small
+                loading={locating}
+                onPress={usePhoneLocation}
+              />
+              {hasPoint ? (
+                <Button
+                  label="Quitar"
+                  variant="ghost"
+                  small
+                  onPress={() => {
+                    setPoint(null);
+                    setClearPoint(true);
+                  }}
+                />
+              ) : null}
+            </View>
+            {pointError ? <Notice tone="warning">{pointError}</Notice> : null}
+          </View>
           <Input
             label="Seguro (opcional)"
             placeholder="Aseguradora, cobertura y deducible"

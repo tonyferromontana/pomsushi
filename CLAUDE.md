@@ -29,7 +29,7 @@
 
 Expo SDK 57 (expo 57.0.26, React Native 0.86, React 19.2) · Expo Router 57 (rutas en `src/app/`) · TypeScript strict · Supabase (Postgres + RLS, Auth email/contraseña, Storage, Realtime) · Transbank Webpay Plus (pagos, con cuotas).
 
-Dependencias agregadas (todas funcionan en Expo Go): `@supabase/supabase-js`, `@react-native-async-storage/async-storage` (sesión), `@expo-google-fonts/bricolage-grotesque`, `@expo-google-fonts/dm-sans`, `@react-native-community/datetimepicker`, `expo-image-picker`, `expo-image-manipulator` (compresión de fotos), `@expo/vector-icons`, `expo-notifications` + `expo-device` (push; en Android el push remoto requiere build de EAS, no Expo Go). Sin mapas ni analytics todavía (decisión pendiente con el dueño).
+Dependencias agregadas (todas funcionan en Expo Go): `@supabase/supabase-js`, `@react-native-async-storage/async-storage` (sesión), `@expo-google-fonts/bricolage-grotesque`, `@expo-google-fonts/dm-sans`, `@react-native-community/datetimepicker`, `expo-image-picker`, `expo-image-manipulator` (compresión de fotos), `@expo/vector-icons`, `expo-notifications` + `expo-device` (push; en Android el push remoto requiere build de EAS, no Expo Go). `expo-location` (solo primer plano, ubicación aproximada; Android sin FINE ni BACKGROUND). Sin mapa embebido ni analytics externo (decisión del dueño).
 
 ## 3. Estructura
 
@@ -76,6 +76,7 @@ src/
     analytics.ts             # track(): consola + log_event() para vehicle_viewed / checkout_started
     guarantee.ts             # guaranteeForType(): garantía vigente de RUÉ por tipo (solo informativa)
     maps.ts                  # openInMaps(): abre Apple/Google Maps con la referencia de entrega (sin API key, sin GPS)
+    location.ts              # getApproxLocation(): permiso + ubicación redondeada a ~1 km (solo cuando la persona lo pide)
     push.ts                  # Registro de token push y apertura de reservas al tocar un aviso
   legal/generated.ts         # GENERADO por scripts/build-legal.mjs (no editar)
   theme.ts                   # Tokens de diseño (única fuente)
@@ -95,6 +96,7 @@ supabase/
   migrations/0008_economics.sql           # config económica versionada, guarantee_rules, snapshot, ledger, payouts T+2, domain_events, métricas
   migrations/0009_transaction_lifecycle.sql  # ofertas, contacto oculto/moderación, contrato digital, check-in/out, extensiones, trust
   migrations/0010_booking_vehicle_pickup.sql # booking_vehicle() devuelve pickup_location (botón "Ver en el mapa")
+  migrations/0011_nearby_search.sql        # "Cerca de mí": vehicle_locations (punto ~1 km, ilegible), search_vehicles con distance_km
   functions/                 # Edge Functions (Deno): webpay-create, webpay-return, push-dispatch, delete-account
   functions/_shared/         # http, supabase (admin/usuario), webpay (API Transbank), redirect (+ pruebas)
   config.toml                # verify_jwt por función
@@ -106,6 +108,7 @@ supabase/
   tests/webpay.test.sql
   tests/economics.test.sql                # ejemplo 100.000 → GMV 100.000, fees 15.000/8.000, cobro 108.000, take rate 23 %
   tests/lifecycle.test.sql                # negociación 3 rondas, mínimo, chat oculto, contrato, check-in, extensión, payout
+  tests/nearby.test.sql                   # cerca de mí: redondeo, nadie lee ubicaciones, distancia entera, sin coordenadas en eventos
 eas.json                     # Perfiles de build: preview (APK interno) y production (tiendas)
 .github/workflows/ci.yml     # CI: legal al día, tsc, lint, pruebas de BD y de Edge Functions
 LANZAMIENTO.md               # Lista de tareas del dueño para lanzar
@@ -177,6 +180,7 @@ RPC nuevas para la app: `accept_terms`, `submit_verification`, `submit_review`, 
 - **Check-in/out**: `booking_handovers` + `damages` (jsonb `[{zone, description, photo_path?}]`, validado), `latitude/longitude` (opcionales, la app aún no los envía), `owner/renter_confirmed_at`, `analysis`/`analysis_status` (futuro: damage_detection, photo_comparison, odometer_ocr). `submit_handover(…, p_damages, p_lat, p_lng)` confirma por su autor; `confirm_handover(id)` la otra parte. `en_curso` exige acta de entrega confirmada por **ambos**; `devuelta` exige acta de devolución con confirmación del propietario. `handover_comparison(booking)`: km recorridos vs permitidos, combustible, daños nuevos por zona.
 - **Contrato digital**: `booking_agreements` (inmutable, participantes leen) se genera al pasar a `confirmada` (v1 `contract`) y por cada extensión pagada (`extension_addendum`), con `content` jsonb y `content_sha256`. Partes con nombre visible; RUT/datos legales los resguarda RUÉ. Protección: `status = not_offered`.
 - **Extensiones**: `booking_extensions` (montos y snapshot inmutables): `request_extension(booking, nueva_fin)` (arrendatario, reserva `confirmada`/`en_curso`, disponibilidad, tarifa diaria del contrato, fees de la config vigente) → `respond_extension` (propietario) → pago Webpay (`webpay-create` con `extension_id`; `payments.extension_id`) → `confirm_extension_payment` (service_role; mismos códigos que el pago de reserva; mueve `bookings.end_date` con flag `rue.extension`). Ledger `extension:<id>:…`; payout incluye extensiones pagadas; vencen con `expire_stale_bookings`; se cierran si la reserva termina.
+- **Cerca de mí (0011)**: `vehicle_locations` (lat/lng `numeric(6,2)` ≈ 1,1 km, RLS sin policies: nadie la lee); `set_vehicle_location` / `clear_vehicle_location` / `vehicle_has_location` (solo el dueño); `search_vehicles(…, p_near_lat, p_near_lng, p_radius_km)` devuelve `distance_km` entero (mín. 1) y ordena por distancia; `search_performed` registra `near_me`/`radius_km`, nunca coordenadas; `delete_account_data` borra los puntos.
 - **Trust**: `user_trust(user)` (verificaciones, completados como propietario/arrendatario, rating, cancelaciones 12 m, mediana de respuesta, tasa de respuesta; sin disputas) y `vehicle_trust(vehicle)` (verificado, completados, rating; utilización 90 d, disputas y próxima reserva solo para el propietario/admin).
 
 **Estados**
@@ -306,6 +310,7 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Personas jurídicas como arrendador (cláusula 3–4) | ⏳ backlog |
 | Conductores adicionales (cláusula 5) | ⏳ backlog (hoy: solo el arrendatario conduce) |
 | Mapa | ✅ nivel 1: botón "Ver en el mapa" (ficha y reserva) que abre Apple/Google Maps con la referencia de entrega, sin clave ni costo; ⏳ nivel 2 (mapa dentro de la app con react-native-maps + clave de Google Maps con facturación): decisión del dueño, después de la beta |
+| Cerca de mí (0011) | ✅ el arrendatario busca por distancia (radio 10/25/50 km, ubicación redondeada y no guardada); el propietario marca opcionalmente un punto aproximado (~1 km) que nadie puede leer, solo se ve "a X km" |
 | Analytics externo | ⏳ decisión del dueño |
 | Logo definitivo | ⏳ archivos del dueño |
 

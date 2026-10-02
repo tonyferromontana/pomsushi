@@ -23,6 +23,8 @@ export type VehicleCardData = {
   daily_price_clp: number;
   verified: boolean;
   cover_path: string | null;
+  /** Solo en búsquedas "cerca de mí" */
+  distance_km?: number | null;
 };
 
 /** Foto del vehículo con placeholder consistente cuando no hay imagen */
@@ -69,7 +71,7 @@ function VehicleCardBase({ v, onPress }: { v: VehicleCardData; onPress: () => vo
       <View style={styles.body}>
         <View style={styles.topLine}>
           <Text variant="overline" color="textSecondary">
-            {`${vehicleTypeLabel(v.vehicle_type)} · ${v.comuna || v.city}`.toUpperCase()}
+            {`${vehicleTypeLabel(v.vehicle_type)} · ${v.comuna || v.city}${v.distance_km != null ? ` · a ${v.distance_km} km` : ''}`.toUpperCase()}
           </Text>
           {v.verified ? <Ionicons name="shield-checkmark" size={14} color={colors.accent} /> : null}
         </View>

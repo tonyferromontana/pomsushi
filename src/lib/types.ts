@@ -204,7 +204,7 @@ export type VehicleSearchResult = Pick<
   | 'weekly_price_clp'
   | 'min_days'
   | 'verified'
-> & { owner_name: string; cover_path: string | null };
+> & { owner_name: string; cover_path: string | null; /** Solo con "cerca de mí": km enteros, nunca coordenadas */ distance_km: number | null };
 
 export type Booking = {
   id: string;

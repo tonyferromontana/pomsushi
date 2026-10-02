@@ -547,8 +547,20 @@ export const LEGAL_DOCS: Record<'terminos' | 'privacidad', LegalBlock[]> = {
       "text": "**Datos técnicos:** tipo de dispositivo, token para enviarte notificaciones y registros de uso necesarios para que el servicio funcione y sea seguro."
     },
     {
+      "type": "li",
+      "text": "**Ubicación aproximada (opcional, solo si tú lo pides):**"
+    },
+    {
+      "type": "li",
+      "text": "Si usas **\"Cerca de mí\"**, tu teléfono nos envía tu ubicación redondeada a cerca de 1 km solo para ordenar esa búsqueda por distancia. No la guardamos."
+    },
+    {
+      "type": "li",
+      "text": "Si eres Propietario y eliges **aparecer en \"cerca de mí\"**, guardamos un punto aproximado del lugar de entrega, redondeado a cerca de 1 km. Ese punto no se muestra a nadie: los demás usuarios solo ven a cuántos kilómetros está el vehículo. Puedes quitarlo cuando quieras y se borra si eliminas tu cuenta."
+    },
+    {
       "type": "p",
-      "text": "No recolectamos tu ubicación GPS ni usamos reconocimiento facial o biometría."
+      "text": "No seguimos tu ubicación en segundo plano y no usamos reconocimiento facial ni biometría."
     },
     {
       "type": "h2",
