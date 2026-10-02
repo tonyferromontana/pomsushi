@@ -85,7 +85,7 @@ No necesitas código de comercio de Transbank: la beta usa el **ambiente de prue
 
 ## Lo que hace Claude después (sin pedirte nada más)
 
-1. Verifica que el proyecto de Supabase esté vacío y aplica las 9 migraciones en orden, una sola vez.
+1. Verifica que el proyecto de Supabase esté vacío y aplica las 10 migraciones en orden, una sola vez.
 2. Sube las 4 funciones del servidor (`webpay-create`, `webpay-return`, `push-dispatch`, `delete-account`) y configura Webpay en modo pruebas.
 3. Activa las notificaciones y revisa Auth, Storage, Realtime, cron y la seguridad (RLS).
 4. Crea el proyecto en Expo y guarda ahí las variables públicas de la app.

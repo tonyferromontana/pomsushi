@@ -30,6 +30,7 @@ import { attributeSummary, PURPOSES, purposeLabel, vehicleTypeLabel } from '@/li
 import { useAuth } from '@/lib/auth';
 import { friendlyError, logError } from '@/lib/errors';
 import { guaranteeForType } from '@/lib/guarantee';
+import { openInMaps } from '@/lib/maps';
 import { clp, memberSince, plural, thousands, toInt } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { BookingPurpose, Profile, Quote, Vehicle, VehiclePhoto as Photo } from '@/lib/types';
@@ -271,6 +272,15 @@ export default function VehicleScreen() {
           <Row label="Kilometraje" value={v.km_per_day ? `${v.km_per_day} km por día` : 'Libre'} />
           <Row label="Combustible" value={v.fuel_policy === 'lleno' ? 'Se devuelve con estanque lleno' : 'Se devuelve con el mismo nivel'} />
           {v.pickup_location ? <Row label="Entrega" value={v.pickup_location} /> : null}
+          {v.pickup_location ? (
+            <Button
+              label="Ver en el mapa"
+              variant="ghost"
+              icon="map-outline"
+              small
+              onPress={() => openInMaps([v.pickup_location, v.comuna, v.city])}
+            />
+          ) : null}
         </View>
 
         {v.description ? (

@@ -68,7 +68,7 @@ Los precios son aproximados; confírmalos en cada sitio antes de pagar.
 
 - [ ] **Supabase** (base de datos), en https://supabase.com:
   1. **New project** → nombre `rue` → región **South America (São Paulo)** → genera y guarda la contraseña.
-  2. **No apliques las migraciones a mano:** Claude las aplica (son 9, en orden) con `scripts/apply-migrations.sh`. Sigue **`BETA.md`**, que tiene los pasos exactos para la beta privada.
+  2. **No apliques las migraciones a mano:** Claude las aplica (son 10, en orden) con `scripts/apply-migrations.sh`. Sigue **`BETA.md`**, que tiene los pasos exactos para la beta privada.
   3. **Authentication → Sign In / Providers → Email:** para probar, apaga "Confirm email". Antes de lanzar, vuelve a prenderlo.
   4. Antes de lanzar, sube al **plan Pro** (aprox. USD 25 al mes). En el plan gratis el proyecto se pausa si no se usa y el correo de registro tiene un límite muy bajo.
   5. Antes de lanzar, configura un correo propio en **Authentication → Emails → SMTP Settings** (con Resend o Brevo, que tienen plan gratis) y traduce los correos al español.

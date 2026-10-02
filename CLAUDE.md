@@ -75,6 +75,7 @@ src/
     useAsync.ts              # Carga con loading / error / reintento
     analytics.ts             # track(): consola + log_event() para vehicle_viewed / checkout_started
     guarantee.ts             # guaranteeForType(): garantía vigente de RUÉ por tipo (solo informativa)
+    maps.ts                  # openInMaps(): abre Apple/Google Maps con la referencia de entrega (sin API key, sin GPS)
     push.ts                  # Registro de token push y apertura de reservas al tocar un aviso
   legal/generated.ts         # GENERADO por scripts/build-legal.mjs (no editar)
   theme.ts                   # Tokens de diseño (única fuente)
@@ -93,6 +94,7 @@ supabase/
   migrations/0007_webpay.sql              # pagos Webpay: buy_order, cuotas, tipo de pago, proveedor en confirm/record
   migrations/0008_economics.sql           # config económica versionada, guarantee_rules, snapshot, ledger, payouts T+2, domain_events, métricas
   migrations/0009_transaction_lifecycle.sql  # ofertas, contacto oculto/moderación, contrato digital, check-in/out, extensiones, trust
+  migrations/0010_booking_vehicle_pickup.sql # booking_vehicle() devuelve pickup_location (botón "Ver en el mapa")
   functions/                 # Edge Functions (Deno): webpay-create, webpay-return, push-dispatch, delete-account
   functions/_shared/         # http, supabase (admin/usuario), webpay (API Transbank), redirect (+ pruebas)
   config.toml                # verify_jwt por función
@@ -303,7 +305,8 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | RUÉ Pro / Fleet (organizaciones) | ⏳ arquitectura descrita en §14; sin tablas aún |
 | Personas jurídicas como arrendador (cláusula 3–4) | ⏳ backlog |
 | Conductores adicionales (cláusula 5) | ⏳ backlog (hoy: solo el arrendatario conduce) |
-| Mapa, analytics | ⏳ decisión del dueño |
+| Mapa | ✅ nivel 1: botón "Ver en el mapa" (ficha y reserva) que abre Apple/Google Maps con la referencia de entrega, sin clave ni costo; ⏳ nivel 2 (mapa dentro de la app con react-native-maps + clave de Google Maps con facturación): decisión del dueño, después de la beta |
+| Analytics externo | ⏳ decisión del dueño |
 | Logo definitivo | ⏳ archivos del dueño |
 
 ## 11. Deuda técnica y riesgos conocidos

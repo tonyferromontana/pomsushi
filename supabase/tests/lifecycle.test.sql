@@ -347,4 +347,26 @@ do $$ begin
   end if;
 end $$;
 
+-- 0010: el lugar de entrega de referencia llega a la reserva solo para sus participantes
+select pg_temp.as_user('f0000000-0000-0000-0000-00000000000a');
+set role authenticated;
+update public.vehicles set pickup_location = 'Metro Tobalaba' where id = 'f1000000-0000-0000-0000-000000000001';
+reset role;
+select pg_temp.as_user('f0000000-0000-0000-0000-00000000000b');
+set role authenticated;
+do $$ begin
+  if (select pickup_location from public.booking_vehicle(current_setting('rue.lc1')::uuid)) is distinct from 'Metro Tobalaba' then
+    raise exception 'FALLA: booking_vehicle no devuelve el lugar de entrega';
+  end if;
+end $$;
+reset role;
+select pg_temp.as_user('f0000000-0000-0000-0000-00000000000c');
+set role authenticated;
+do $$ begin
+  if exists (select 1 from public.booking_vehicle(current_setting('rue.lc1')::uuid)) then
+    raise exception 'FALLA: un tercero ve el vehículo de una reserva ajena';
+  end if;
+end $$;
+reset role;
+
 select 'pruebas del ciclo transaccional OK' as resultado;

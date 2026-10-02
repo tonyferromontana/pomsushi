@@ -31,6 +31,7 @@ import { useAuth } from '@/lib/auth';
 import { BOOKING_FLOW, BOOKING_STATUS, purposeLabel } from '@/lib/catalog';
 import { friendlyError, logError } from '@/lib/errors';
 import { clp, dateRange, plural, shortDate } from '@/lib/format';
+import { openInMaps } from '@/lib/maps';
 import { supabase } from '@/lib/supabase';
 import type {
   Booking,
@@ -50,6 +51,7 @@ import { colors, radius, space } from '@/theme';
 type Detail = {
   booking: Booking;
   vehicleTitle: string;
+  pickupPlace: { location: string | null; comuna: string | null; city: string | null };
   other: Profile | null;
   events: BookingEvent[];
   reviewed: boolean;
@@ -108,10 +110,11 @@ async function loadDetail(id: string, userId: string): Promise<Detail> {
   if (offers.error) logError('booking.offers', offers.error);
   if (extensions.error) logError('booking.extensions', extensions.error);
   if (agreements.error) logError('booking.agreements', agreements.error);
-  const v = (vehicle.data as { title: string }[] | null)?.[0];
+  const v = (vehicle.data as { title: string; pickup_location: string | null; comuna: string | null; city: string | null }[] | null)?.[0];
   return {
     booking,
     vehicleTitle: v?.title ?? 'Vehículo',
+    pickupPlace: { location: v?.pickup_location ?? null, comuna: v?.comuna ?? null, city: v?.city ?? null },
     other: (other.data as Profile) ?? null,
     events: (events.data ?? []) as BookingEvent[],
     reviewed: !!review.data,
@@ -422,6 +425,15 @@ export default function BookingScreen() {
           {b.purpose ? ` · ${purposeLabel(b.purpose)}` : ''}
         </Text>
         {step ? <Notice tone={status.tone}>{step}</Notice> : null}
+        {data.pickupPlace.location ? (
+          <Button
+            label={`Entrega: ${data.pickupPlace.location} · ver en el mapa`}
+            variant="ghost"
+            icon="map-outline"
+            small
+            onPress={() => openInMaps([data.pickupPlace.location, data.pickupPlace.comuna, data.pickupPlace.city])}
+          />
+        ) : null}
       </View>
 
       {flowIndex >= 0 ? (
