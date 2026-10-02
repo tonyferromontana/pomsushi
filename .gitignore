@@ -47,3 +47,6 @@ example
 
 # Deno (Edge Functions)
 deno.lock
+
+# Supabase CLI (caché local)
+supabase/.temp/
