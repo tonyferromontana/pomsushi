@@ -50,3 +50,6 @@ deno.lock
 
 # Supabase CLI (caché local)
 supabase/.temp/
+
+# Capturas locales de demo (no se versionan)
+demo/
