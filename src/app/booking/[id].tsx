@@ -11,6 +11,7 @@ import { NegotiationCard } from '@/components/booking/NegotiationCard';
 import { TimeField } from '@/components/DateRangeField';
 import { Stars } from '@/components/forms';
 import { ReportSheet } from '@/components/ReportSheet';
+import { ReviewsList } from '@/components/ReviewsList';
 import {
   Avatar,
   Badge,
@@ -553,6 +554,18 @@ export default function BookingScreen() {
           onPress={() => router.push({ pathname: '/chat/[id]', params: { id: b.id } })}
         />
       </Card>
+      {other ? (
+        <View style={{ marginTop: space.md }}>
+          <ReviewsList
+            targetUserId={other.id}
+            emptyText={
+              role === 'owner'
+                ? 'Este arrendatario todavía no tiene reseñas en RUÉ.'
+                : 'Este propietario todavía no tiene reseñas en RUÉ.'
+            }
+          />
+        </View>
+      ) : null}
 
       {b.renter_message ? (
         <>

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui';
 import { Checkbox } from '@/components/forms';
 import { ReportSheet } from '@/components/ReportSheet';
+import { ReviewsList } from '@/components/ReviewsList';
 import { VehiclePhoto } from '@/components/VehicleCard';
 import { TERMS_VERSION } from '@/legal/generated';
 import { track } from '@/lib/analytics';
@@ -321,6 +322,12 @@ export default function VehicleScreen() {
                 <Ionicons name="shield-checkmark" size={20} color={colors.accent} accessibilityLabel="Identidad verificada" />
               ) : null}
             </View>
+            <SectionHeader title="Reseñas de este vehículo" />
+            <ReviewsList
+              targetUserId={v.owner_id}
+              vehicleId={v.id}
+              emptyText="Todavía no tiene reseñas. Las reseñas solo las pueden dejar personas que arrendaron este vehículo por RUÉ."
+            />
           </>
         ) : null}
 

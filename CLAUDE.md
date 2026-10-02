@@ -62,6 +62,7 @@ src/
     SetupNeeded.tsx          # Pantalla si falta .env
     forms.tsx                # Checkbox, Stars (reseñas), MenuRow
     ReportSheet.tsx          # Reportar usuario / publicación / reserva (+ bloquear)
+    ReviewsList.tsx          # Reseñas recibidas (estrellas + comentario): en la ficha (del vehículo) y en la reserva (de la otra parte)
     booking/NegotiationCard.tsx  # Ofertas y contraofertas (counter_offer / accept_offer / accept_booking)
     booking/ExtensionCard.tsx    # Pedir, aprobar y pagar extensiones
     booking/AgreementCard.tsx    # Contrato digital y anexos (hash)
@@ -284,7 +285,7 @@ Configuración de Supabase para pruebas: Authentication → Sign In / Providers 
 | Pago Webpay (crear, commit en servidor, cuotas, anulación automática, pago doble) | ✅ código + pruebas; ⏳ probar en integración de Transbank (desde el celular del dueño) |
 | Avisos en la app + push | ✅ bandeja; ⏳ push requiere `supabase_url`, `eas init` y build EAS |
 | Verificación de licencia/cédula (revisión manual de admin) | ✅ |
-| Reseñas y reputación real | ✅ |
+| Reseñas y reputación real | ✅ se dejan al finalizar (1–5 estrellas + comentario) y se muestran en la ficha del vehículo y en la reserva |
 | Reportar y bloquear | ✅ |
 | Eliminar cuenta (app + web) | ✅ |
 | Datos bancarios y pagos a propietarios (manual, ver OPERACION.md) | ✅ |
