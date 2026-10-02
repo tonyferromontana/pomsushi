@@ -71,6 +71,11 @@
       "typedRoutes": true
     },
     "description": "Arrienda autos, motos, camionetas, vans, furgones y camiones directo de sus dueños. Haz producir lo que tienes parado.",
-    "extra": {}
+    "extra": {
+      "eas": {
+        "projectId": "70cfc9b5-5885-46e4-a4a2-132cf1f20773"
+      }
+    },
+    "owner": "tonymontana369"
   }
 }
